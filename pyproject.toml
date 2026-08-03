@@ -1,0 +1,33 @@
+[project]
+name = "konigsberg"
+version = "0.0.0"
+description = "Formal and empirical tools for graph theory research"
+requires-python = ">=3.11"
+readme = "README.md"
+
+# Meta-package: the real code lives in the workspace members below.
+dependencies = [
+    "konigsberg-empirical",
+    "konigsberg-harness",
+]
+
+[tool.uv.sources]
+konigsberg-empirical = { workspace = true }
+konigsberg-harness = { workspace = true }
+
+[tool.uv.workspace]
+members = ["empirical", "harness"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+    "mypy>=1.11",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

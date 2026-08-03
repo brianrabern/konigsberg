@@ -1,0 +1,13 @@
+name = "konigsberg"
+defaultTargets = ["Konigsberg"]
+
+# mathlib is a DEPENDENCY, never a fork. Pinned by tag here as a floor; the real
+# freeze is the commit written into lake-manifest.json by `lake update` — COMMIT
+# that file. Bump deliberately, never incidentally.
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
+rev = "v4.31.0"
+
+[[lean_lib]]
+name = "Konigsberg"

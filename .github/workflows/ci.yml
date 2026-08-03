@@ -1,0 +1,44 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  trust-gates:
+    # The merge-time half of the trust guarantee. Runs without a Lean build:
+    # validates status.toml shape and recorded axioms. The authoritative
+    # per-declaration axiom check runs in the `lean` job with --run-lean.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: status schema
+        run: python ci/check_status.py formal
+      - name: no sorry in formalized entries
+        run: python ci/check_no_sorry.py formal
+      - name: axiom whitelist (recorded)
+        run: python ci/check_axioms.py formal
+
+  python:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync
+      - run: uv run ruff check .
+      - run: uv run pytest
+
+  lean:
+    # M0: environment must round-trip. Uses mathlib's prebuilt cache — never
+    # builds mathlib from source. Enable once formal/ has content worth building.
+    if: false  # flip to true at M0
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: leanprover/lean-action@v1
+        with:
+          lake-package-directory: formal
+      # then: python ci/check_axioms.py formal --run-lean

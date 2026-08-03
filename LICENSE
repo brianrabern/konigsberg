@@ -1,0 +1,14 @@
+Konigsberg is intended to be released under the Apache License, Version 2.0
+(the same license as mathlib, chosen for frictionless interop).
+
+  Full text: https://www.apache.org/licenses/LICENSE-2.0.txt
+
+BEFORE FIRST PUBLIC RELEASE, replace this file with the full Apache 2.0 text.
+
+BLOCKING: the license is not final. Reuse terms for algorithms ported from
+Landon Rabern's choosability engine (see vendor/, empirical/.../coloring/) must
+be resolved in writing with the author before any ported algorithm lands. The
+project's effective license depends on that resolution. Until then, treat this
+repository as source-available for development, not as Apache-licensed.
+
+Copyright (c) 2026 Brian Rabern and contributors.

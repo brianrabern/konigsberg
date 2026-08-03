@@ -1,0 +1,32 @@
+# Lean / Lake
+formal/.lake/
+.lake/
+*.olean
+build/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.uv/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+
+# Env / secrets — never commit provider keys
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Vendor build artifacts (source oracle is tracked; its build output is not)
+vendor/**/bin/
+vendor/**/obj/
+
+# Recorded oracle fixtures ARE tracked (see tests/differential); build dirs are not

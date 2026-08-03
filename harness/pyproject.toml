@@ -1,0 +1,22 @@
+[project]
+name = "konigsberg-harness"
+version = "0.0.0"
+description = "Agent tier: loop, tool registry, epistemic ledger, context surfacing"
+requires-python = ">=3.11"
+dependencies = [
+    "konigsberg-empirical",
+    "tomli-w>=1.0",              # write status.toml back; tomllib (read) is stdlib
+]
+
+[project.optional-dependencies]
+providers = ["anthropic>=0.40"] # model routing (open decision #5)
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["konigsberg_harness"]
+
+[tool.uv.sources]
+konigsberg-empirical = { workspace = true }

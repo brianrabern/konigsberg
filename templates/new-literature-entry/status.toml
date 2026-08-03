@@ -1,0 +1,16 @@
+[entry]
+name = "Author_Result"                # e.g. CranstonRabern_LineGraphBK
+citation = "TODO: full citation"
+area = "coloring"
+
+# Per-case axiom justifications, only if a claim needs a non-whitelisted axiom.
+# Key = axiom name, value = written justification. Whitelisted by default:
+# propext, Classical.choice, Quot.sound. native_decide is NOT whitelisted.
+# [entry.axioms_justification]
+# "Lean.ofReduceBool" = "why native_decide is acceptable for this specific claim"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.Author_Result.main_theorem"
+status = "stated"                     # formalized | stated | informal
+axioms = []                           # populated by check_axioms --run-lean
+verified_at = "<commit>"
