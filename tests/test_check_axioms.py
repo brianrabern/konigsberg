@@ -79,7 +79,7 @@ class _StubRepl:
     def restart(self):
         self.restarts += 1
 
-    def send(self, src, timeout_s=None):
+    def send(self, src, timeout_s=None, new_env=False):
         self.imported = src
         return types.SimpleNamespace(errors=self.import_errors)
 

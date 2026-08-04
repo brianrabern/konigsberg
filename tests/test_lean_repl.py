@@ -29,6 +29,7 @@ for line in sys.stdin:
         if buf.strip():
             obj = json.loads(buf)
             print(json.dumps({"env": 0, "echo": obj.get("cmd"),
+                              "recv_env": obj.get("env", None),
                               "messages": [], "sorries": []}), flush=True)
             print(flush=True)
             buf = ""
@@ -108,10 +109,19 @@ def test_send_roundtrips_and_threads_env():
     with LeanREPL(repl_cmd=[sys.executable, "-c", FAKE_REPL], timeout_s=5) as repl:
         gs = repl.send("theorem foo : True := trivial")
         assert gs.raw["echo"] == "theorem foo : True := trivial"
+        assert gs.raw["recv_env"] is None  # first call sends no env
         assert gs.env == 0
         assert repl._env == 0  # threaded onto the instance for the next call
         gs2 = repl.send("theorem bar : True := trivial")
         assert gs2.raw["echo"] == "theorem bar : True := trivial"
+        assert gs2.raw["recv_env"] == 0  # second call sends env back to the REPL
+
+
+def test_send_new_env_does_not_thread_env():
+    with LeanREPL(repl_cmd=[sys.executable, "-c", FAKE_REPL], timeout_s=5) as repl:
+        repl.send("def f := 1")  # sets repl._env = 0
+        gs = repl.send("import Mathlib", new_env=True)
+        assert gs.raw["recv_env"] is None  # import must NOT carry an env field
 
 
 def test_timeout_kills_the_process():

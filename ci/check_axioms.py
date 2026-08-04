@@ -83,7 +83,7 @@ class _LeanAxiomProbe:
         """Start a FRESH env with `modules` imported. Raises on import error."""
         self._repl.restart()
         src = "\n".join(f"import {m}" for m in modules)
-        state = self._repl.send(src, timeout_s=self._timeout)
+        state = self._repl.send(src, timeout_s=self._timeout, new_env=True)
         if state.errors:
             raise RuntimeError("; ".join(state.errors))
 

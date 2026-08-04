@@ -31,10 +31,10 @@ Response fields we read:
     sorries   list   — {goal: str, proofState: int, pos, endPos}
     goals     list   — present for tactic-mode replies
 
-Launch command is configurable because how the REPL is made available varies
-(add `repl` as a lake dependency and use `lake exe repl`, or have the `repl`
-binary on PATH and use the default `lake env repl`). Set `repl_cmd` to match your
-setup; nothing else in the class assumes a particular invocation.
+Launch command defaults to `lake exe repl`, which builds+runs the `repl` exe
+from the REPL package required in formal/lakefile.toml (pinned to its v4.31.0
+branch so toolchains match). Override `repl_cmd` if you run a separately-cloned
+REPL instead: ("lake", "env", "/path/to/repl/.lake/build/bin/repl").
 """
 from __future__ import annotations
 
@@ -50,10 +50,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Self
 
-# Default: run the REPL binary inside the project's Lake environment so it sees
-# the same toolchain and olean cache as `formal/`. Override via `repl_cmd` if you
-# vendor the REPL as a lake exe (then: ["lake", "exe", "repl"]).
-DEFAULT_REPL_CMD: tuple[str, ...] = ("lake", "env", "repl")
+# Default: build+run the `repl` exe from the REPL package required in
+# formal/lakefile.toml. `lake exe` runs it inside the project's Lake environment,
+# so it sees the same toolchain and olean cache as `formal/` and imports resolve.
+# Override `repl_cmd` if you instead run a separately-cloned REPL, e.g.
+# ("lake", "env", "/path/to/repl/.lake/build/bin/repl").
+DEFAULT_REPL_CMD: tuple[str, ...] = ("lake", "exe", "repl")
 
 # Cap stderr retained for diagnostics so a chatty/looping process can't grow the
 # buffer without bound.
@@ -168,14 +170,22 @@ class LeanREPL:
 
     # -- public API --------------------------------------------------------
 
-    def send(self, snippet: str, *, timeout_s: float | None = None) -> GoalState:
+    def send(
+        self, snippet: str, *, timeout_s: float | None = None, new_env: bool = False
+    ) -> GoalState:
         """Elaborate `snippet` against the live environment; return goals+errors.
 
-        The returned env id is threaded onto subsequent calls so state is live
-        (a `def` here is visible to a `theorem` next). On timeout the process is
-        killed and LeanREPLTimeout is raised — see the module docstring.
+        The current env id is sent WITH the command and the returned one is kept,
+        so state is live (a `def` here is visible to a `theorem` next). Pass
+        `new_env=True` to run in a fresh environment instead — required for
+        `import` commands, which the REPL only accepts when no env is specified.
+        On timeout the process is killed and LeanREPLTimeout is raised — see the
+        module docstring.
         """
-        resp = self._request({"cmd": snippet}, timeout_s)
+        payload: dict = {"cmd": snippet}
+        if not new_env and self._env is not None:
+            payload["env"] = self._env
+        resp = self._request(payload, timeout_s)
         if "env" in resp:
             self._env = resp["env"]
         return _to_goal_state(resp)

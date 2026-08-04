@@ -1,4 +1,4 @@
-.PHONY: gates test lint sync lean-setup
+.PHONY: gates test lint sync lean-setup lean-smoke axioms-lean
 
 sync:        ## install python packages (editable)
 	uv sync
@@ -14,5 +14,11 @@ test: sync   ## run python tests
 lint: sync   ## ruff
 	uv run ruff check .
 
-lean-setup:  ## M0: fetch mathlib + prebuilt oleans, then build
+lean-setup:  ## M0: fetch mathlib + prebuilt oleans + repl, then build
 	cd formal && lake update && lake exe cache get && lake build
+
+lean-smoke: sync  ## M0: verify the Lean env round-trips through the REPL
+	uv run python scripts/smoke_lean.py
+
+axioms-lean: sync  ## authoritative axiom gate against a live Lean env
+	uv run python ci/check_axioms.py formal --run-lean

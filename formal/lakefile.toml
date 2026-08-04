@@ -9,5 +9,15 @@ name = "mathlib"
 scope = "leanprover-community"
 rev = "v4.31.0"
 
+# The Lean REPL, pinned to its v4.31.0 branch so its toolchain matches ours
+# (a mismatch fails to load mathlib's oleans). Depends only on Lean core, so it
+# cannot conflict with mathlib's dependency set. Provides the `repl` exe that the
+# harness drives via `lake exe repl`. Frozen, like mathlib, in lake-manifest.json
+# by `lake update` — COMMIT that file.
+[[require]]
+name = "REPL"
+git = "https://github.com/leanprover-community/repl"
+rev = "v4.31.0"
+
 [[lean_lib]]
 name = "Konigsberg"
