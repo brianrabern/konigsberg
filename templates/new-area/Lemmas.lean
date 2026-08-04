@@ -1,5 +1,5 @@
 import Konigsberg.Areas.NewArea.Basic
 
-namespace Konigsberg.NewArea
+namespace Konigsberg.Areas.NewArea
 
-end Konigsberg.NewArea
+end Konigsberg.Areas.NewArea

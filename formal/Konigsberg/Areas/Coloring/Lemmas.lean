@@ -4,8 +4,8 @@ Populated after the definitions in Basic.lean stabilize.
 -/
 import Konigsberg.Areas.Coloring.Basic
 
-namespace Konigsberg.Coloring
+namespace Konigsberg.Areas.Coloring
 
 -- (lemmas over the coloring definitions go here)
 
-end Konigsberg.Coloring
+end Konigsberg.Areas.Coloring

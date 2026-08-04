@@ -14,7 +14,7 @@ scaffold filler. Fill incrementally, each reviewed.
 import Mathlib.Combinatorics.SimpleGraph.Coloring
 import Konigsberg.Foundations.Basic
 
-namespace Konigsberg.Coloring
+namespace Konigsberg.Areas.Coloring
 
 /-
 TODO (M2, human-authored, reviewed):
@@ -26,4 +26,4 @@ TODO (M2, human-authored, reviewed):
   * the connecting lemmas that make paper theorems statable
 -/
 
-end Konigsberg.Coloring
+end Konigsberg.Areas.Coloring

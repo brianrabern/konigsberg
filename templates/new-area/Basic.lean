@@ -1,7 +1,7 @@
 import Konigsberg.Foundations.Basic
 
-namespace Konigsberg.NewArea
+namespace Konigsberg.Areas.NewArea
 
 -- Definitional layer for this area. Human-authored, reviewed.
 
-end Konigsberg.NewArea
+end Konigsberg.Areas.NewArea
