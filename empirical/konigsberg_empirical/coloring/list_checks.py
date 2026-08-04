@@ -15,7 +15,7 @@ Two tiers of difficulty, kept honest:
 """
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from itertools import combinations, product
 
 from ..core import Graph
@@ -25,11 +25,12 @@ from ..core import Graph
 CHOOSABILITY_ASSIGNMENT_LIMIT = 2_000_000
 
 
-def is_L_colorable(graph: Graph, lists: Sequence[set[int]]) -> bool:
-    """True iff G has a proper coloring c with c(v) in lists[v].
+def find_list_coloring(graph: Graph, lists: Sequence[set[int]]) -> dict[int, int] | None:
+    """Return a proper coloring {v: color} with color(v) in lists[v], or None.
 
     Backtracking with a most-constrained-vertex order (smallest list first, then
-    highest degree) for early pruning. Correct and cheap for small graphs.
+    highest degree) for early pruning. Correct and cheap for small graphs. The
+    witness it returns is what CEGAR choosability search needs to refine on.
     """
     if len(lists) != graph.n:
         raise ValueError(f"expected {graph.n} lists, got {len(lists)}")
@@ -49,7 +50,14 @@ def is_L_colorable(graph: Graph, lists: Sequence[set[int]]) -> bool:
                 color[v] = None
         return False
 
-    return extend(0)
+    if not extend(0):
+        return None
+    return {v: c for v, c in enumerate(color) if c is not None}
+
+
+def is_L_colorable(graph: Graph, lists: Sequence[set[int]]) -> bool:
+    """True iff G has a proper coloring c with c(v) in lists[v]."""
+    return find_list_coloring(graph, lists) is not None
 
 
 def is_k_colorable(graph: Graph, k: int) -> bool:
@@ -70,7 +78,11 @@ def chromatic_number(graph: Graph) -> int:
 
 
 def is_k_choosable(
-    graph: Graph, k: int, *, limit: int = CHOOSABILITY_ASSIGNMENT_LIMIT
+    graph: Graph,
+    k: int,
+    *,
+    limit: int = CHOOSABILITY_ASSIGNMENT_LIMIT,
+    colorable: Callable[[Graph, Sequence[set[int]]], bool] = is_L_colorable,
 ) -> bool:
     """Exact k-choosability by exhaustive search. Small graphs only.
 
@@ -79,8 +91,14 @@ def is_k_choosable(
     relabeling we may fix vertex 0's list to {0,...,k-1} (choosability is invariant
     under color renaming) — cutting the search by one vertex's worth of choices.
 
+    The per-assignment colorability check is injected via `colorable` so the SAT
+    backend (sat.sat_L_colorable) can be dropped in to push the tractable range
+    outward; the default is the pure backtracking check. Either way the OUTER
+    search is exhaustive over assignments — SAT scales the inner instance, not the
+    Pi-2 quantifier.
+
     Raises ValueError if the assignment count would exceed `limit`, rather than
-    hang: for anything past tiny graphs, use the specialized solver (M4).
+    hang.
     """
     n = graph.n
     if n == 0:
@@ -94,11 +112,11 @@ def is_k_choosable(
     if assignments > limit:
         raise ValueError(
             f"choosability search too large: {assignments} assignments > {limit} "
-            f"for n={n}, k={k}; use the specialized solver instead"
+            f"for n={n}, k={k}; raise `limit` or use a specialized solver"
         )
 
     fixed = set(range(k))  # vertex 0's list, fixed by symmetry
     for rest in product(k_lists, repeat=n - 1):
-        if not is_L_colorable(graph, [fixed, *rest]):
+        if not colorable(graph, [fixed, *rest]):
             return False
     return True

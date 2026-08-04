@@ -70,7 +70,7 @@ Monorepo. Lean and Python live in sibling top-level directories and never import
 ```
 konigsberg/
 ├── README.md
-├── LICENSE                      # Apache 2.0 (pending Landon's terms)
+├── LICENSE                      # Apache 2.0 (Landon's reuse terms cleared)
 ├── CONTRIBUTING.md
 ├── lean-toolchain
 │
@@ -114,7 +114,7 @@ konigsberg/
 │       └── models.py            # provider routing
 │
 ├── vendor/
-│   └── choosability-oracle/     # Landon's .NET build — TEST ORACLE ONLY, to be deleted
+│   └── choosability-oracle/     # Landon's .NET build — reference oracle for validating the Python port, then deleted
 │
 ├── ci/
 │   ├── check_axioms.py
@@ -213,6 +213,37 @@ Persistent environment via LeanREPL (not shell-outs per snippet) — keeps live 
 
 ## 7. Empirical tier
 
+### The solver layer is the core oracle, not a support act
+
+Reframed after feedback drawn from Tao's Equational Theories Project. ETP's lesson
+was that cheap *complete* solvers (Vampire for entailment, finite model finding for
+refutation) did the overwhelming bulk of the work; LLMs and humans handled only the
+residue. Konigsberg's equivalent of Vampire is not a Lean tactic — it is this
+empirical tier: SAT for k-/list-colorability, geng/nauty for generation, and
+Rabern's choosability engine. So this tier is a **first-class oracle**, and the
+WebGraphs reimplementation is core infrastructure, not a legacy port to scaffold
+and abandon. (Deleting `vendor/` still happens — but it deletes only the .NET
+*reference* implementation once the Python port is validated against it; the
+*capability* is permanent.)
+
+**Refutation before proof.** Most conjectures an agent generates in coloring die on
+≤10 vertices. The empirical tier's first job is to kill them there, at near-zero
+cost, before Lean or an LLM is ever invoked. Cheap refutation outweighs clever
+proving. This should be a mandatory first gate on any generated conjecture, not an
+optional tool.
+
+**Completeness is uneven — keep the ledger honest about it.**
+- SAT decides *k-colorability* and *L-colorability* (a single list assignment)
+  exactly — NP problems a SAT solver eats. These scale refutation well past the
+  brute-force ceiling and yield `python-checked` results up to the stated n.
+- *k-choosability* is Π₂ (it quantifies over all list assignments). No single SAT
+  call decides it; SAT only accelerates each inner instance, so the outer search
+  is still search. The exhaustive checker is exact only for tiny graphs.
+- *Alon–Tarsi* is a **sufficient** condition (AT number ≥ choice number): it can
+  certify choosable, but a failure proves nothing. Its results are
+  `solver-certified` / `certificate-checked`, never reported as a decided
+  `python-checked` non-result.
+
 ### Landon Rabern's choosability engine
 
 `WebGraphs` (C#/Silverlight) contains roughly a decade of specialized coloring-search code: **FixerBreaker** (fixer-breaker game solver for online/list choosability), **Polynomials** (Combinatorial Nullstellensatz / Alon–Tarsi), assignment enumerators, independence ratio, planar machinery, bit-level graph generation.
@@ -236,7 +267,10 @@ This converts "did I port FixerBreaker correctly?" from a hope into a CI check. 
 - Counterexample search: enumerate to a bound, test predicate, return first violation — **the highest-ROI tool in the system**, because it kills bad conjectures before formalization cost is incurred
 - Optional Sage backend for standard queries
 
-**Licensing:** resolve reuse terms with Landon in writing before any ported algorithm lands. He is a coauthor and will likely be glad to, but the project's license depends on it.
+**Licensing:** resolved — Landon (a coauthor) has agreed to reuse of the ported
+algorithms. M4 is no longer licensing-blocked. Note that the SAT layer is
+licensing-independent regardless, and already delivers the complete decision core
+for k-/L-colorability without any ported code.
 
 ---
 
@@ -301,7 +335,8 @@ The contributor pool is {graph theorists} ∩ {people who write Lean}, which tod
 - **Templates are the product** for community growth. Someone adds `Matching/` by copying `templates/new-area/`. If the template is good, contribution is mechanical; if absent, every new area is a bespoke negotiation and growth stalls.
 
 ### Licensing
-Apache 2.0 (matches mathlib, frictionless), pending resolution of Landon's terms for ported algorithms.
+Apache 2.0 (matches mathlib, frictionless). Landon has agreed to reuse of the
+ported algorithms, so the license is unblocked.
 
 ### Strategic caution
 "The community will build out other areas" is the standard open-source dream and usually does not happen unaided. **Architect so the project is fully valuable if it is only ever you**, and treat contributors as upside. The coloring vertical must stand alone as a useful instrument for your own BK work. If it does, contributors follow the utility. If it doesn't, no governance structure will summon them.
@@ -315,14 +350,22 @@ Apache 2.0 (matches mathlib, frictionless), pending resolution of Landon's terms
 | **M0** | Lake project + pinned mathlib + `lake exe cache get` working; `lean_check` round-trips | Environment is viable |
 | **M1** | Axiom gate + `check_no_sorry` in CI; `ledger.py` skeleton | **Trust spine before anything else** |
 | **M2** | Foundations + `Areas/Coloring/Basic.lean` — definitional layer, human-authored | The modeling is right |
-| **M3** | Empirical tier: enumeration + counterexample search | Immediate standalone utility |
-| **M4** | Landon engine ported; differential tests green; `vendor/` deleted | The differentiator works |
+| **M3** | Empirical tier: enumeration + counterexample search + **SAT decision layer** (k-/L-colorability) | Immediate standalone utility; the complete-solver refutation core |
+| **M4** | Landon engine ported; differential tests green; `vendor/` deleted (licensing cleared) | The specialized choosability accelerator on top of SAT |
 | **M5** | One anchor paper statement-formalized with `status.toml` | Literature-as-Lean concept end to end |
 | **M6** | `lean_search` + `library_map` | Agent becomes competent rather than flailing |
 | **M7** | Bridge + full agent loop with provenance tagging | It is a research assistant |
 | **M8** | Attack one real open sub-lemma from BK-adjacent work | **The honest version of the north star** |
 
 M1 before M2 is deliberate. Building the corpus before the gate means retrofitting trust onto content, which never fully works.
+
+**Reprioritization (post-ETP feedback).** The solver/refutation layer is core, not
+late. The SAT decision core (part of M3) and Rabern's engine (M4) are the oracle
+that does the bulk of the work; proof (Lean) and generation (LLM) handle the
+residue. Concretely: SAT k-/L-colorability landed with M3; M4 is unblocked
+(licensing cleared) and bumped in priority; and refutation is a mandatory first
+pass on any generated conjecture — kill it on ≤10 vertices before Lean or an LLM
+sees it.
 
 ---
 
@@ -346,7 +389,7 @@ M1 before M2 is deliberate. Building the corpus before the gate means retrofitti
 1. **LeanREPL vs. alternative Lean interaction layer** — evaluate current options before committing; this is a hard-to-change contract.
 2. **Sage as a backend** — genuine dependency or avoid the weight? Affects install story.
 3. **Anchor papers for `Literature/`** — pick 2–3 where you have the expertise to get statements right. Rabern list-critical / average-degree work and the line-graph BK result are the natural candidates.
-4. **Landon's licensing terms** — blocking for M4.
+4. **Landon's licensing terms** — RESOLVED. He has agreed to reuse; M4 unblocked.
 5. **Model routing policy** — cheap models for empirical dispatch, frontier for proof search; thresholds TBD.
 
 ---

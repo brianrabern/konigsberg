@@ -57,6 +57,14 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "Enumerate graphs up to a bound and return the first predicate violation "
         "(or a positive result if none); mints a python-checked Claim.",
     )
+    reg.register(
+        "choosability_refute",
+        et.choosability_refute,
+        "Given a graph6 string, k, and optional palette: search (CEGAR/SAT) for a "
+        "certificate that the graph is NOT k-choosable. A hit is re-verified "
+        "(certificate-checked); a miss at the default palette decides k-choosable "
+        "(python-checked). All args JSON-native, so the agent can call it directly.",
+    )
     if repl is not None:
         reg.register(
             "lean_check",
