@@ -32,13 +32,17 @@ jobs:
       - run: uv run pytest
 
   lean:
-    # M0: environment must round-trip. Uses mathlib's prebuilt cache — never
-    # builds mathlib from source. Enable once formal/ has content worth building.
-    if: false  # flip to true at M0
+    # The authoritative half of the trust guarantee: build formal/ against the
+    # frozen mathlib (prebuilt cache — never from source), verify the REPL
+    # round-trips, then run the per-declaration axiom gate against the live env.
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: leanprover/lean-action@v1
         with:
           lake-package-directory: formal
-      # then: python ci/check_axioms.py formal --run-lean
+      - uses: astral-sh/setup-uv@v3
+      - name: environment round-trips (M0 smoke)
+        run: make lean-smoke
+      - name: axiom whitelist (live #print axioms)
+        run: make axioms-lean
