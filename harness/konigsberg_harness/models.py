@@ -9,11 +9,19 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Protocol
 
 
 class Tier(Enum):
     CHEAP = "cheap"      # empirical dispatch, routing, summarization
     FRONTIER = "frontier"  # proof search, hard lemma decomposition
+
+
+class Model(Protocol):
+    """What the agent loop needs from a model. Any provider (or a test fake)
+    satisfies this; the loop never depends on a concrete SDK."""
+
+    def complete(self, prompt: str, *, tier: Tier) -> str: ...
 
 
 @dataclass
