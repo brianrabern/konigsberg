@@ -1,8 +1,11 @@
 # Differential tests
 
-Feed nauty-generated graphs to both the .NET oracle (`vendor/`) and the Python
-reimplementation; assert identical output. Once the retirement bar is met, the
-oracle is deleted and these pin against recorded fixtures.
+Feed shared inputs to the .NET oracle (`vendor/choosability-oracle/`) and the
+Python FixerBreaker port; assert identical `total_boards` / `win` / `nearly_win`.
 
-- `fixtures/` — recorded oracle outputs (tracked), created before `vendor/` dies.
-- Also home the bridge round-trip property test (Python graph -> Lean -> back).
+- `fixtures/fixer_breaker_corpus.jsonl` — recorded oracle outputs (committed).
+  CI runs against this file with **no dotnet**.
+- `gen_oracle_cases.py` — regenerate the corpus (needs `dotnet` + a built oracle).
+  Hard-gates on `oracle --selftest` before writing.
+
+See `docs/handoff/WP_C_ORACLE.md` and `vendor/choosability-oracle/README.md`.

@@ -1,0 +1,94 @@
+{"edges": [[0, 1]], "graph6": "A_", "max_pot": 1, "n": 2, "sizes": [1, 1], "total_boards": 1, "win": true}
+{"edges": [[0, 1]], "graph6": "A_", "max_pot": 2, "n": 2, "nearly_win": true, "sizes": [1, 1], "total_boards": 2, "win": false}
+{"edges": [[1, 2]], "graph6": "BG", "max_pot": 1, "n": 3, "sizes": [0, 1, 1], "total_boards": 1, "win": true}
+{"edges": [[1, 2]], "graph6": "BG", "max_pot": 2, "n": 3, "nearly_win": true, "sizes": [0, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 2]], "graph6": "Bo", "max_pot": 2, "n": 3, "nearly_win": false, "sizes": [2, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 2]], "graph6": "Bo", "max_pot": 3, "n": 3, "nearly_win": false, "sizes": [2, 1, 1], "total_boards": 5, "win": false}
+{"edges": [[0, 1], [0, 2], [1, 2]], "graph6": "Bw", "max_pot": 2, "n": 3, "nearly_win": false, "sizes": [2, 2, 2], "total_boards": 1, "win": false}
+{"edges": [[0, 1], [0, 2], [1, 2]], "graph6": "Bw", "max_pot": 3, "n": 3, "nearly_win": false, "sizes": [2, 2, 2], "total_boards": 5, "win": false}
+{"edges": [[2, 3]], "graph6": "C@", "max_pot": 1, "n": 4, "sizes": [0, 0, 1, 1], "total_boards": 1, "win": true}
+{"edges": [[2, 3]], "graph6": "C@", "max_pot": 2, "n": 4, "nearly_win": true, "sizes": [0, 0, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[1, 3], [2, 3]], "graph6": "CB", "max_pot": 2, "n": 4, "nearly_win": false, "sizes": [0, 1, 1, 2], "total_boards": 2, "win": false}
+{"edges": [[1, 3], [2, 3]], "graph6": "CB", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [0, 1, 1, 2], "total_boards": 5, "win": false}
+{"edges": [[0, 1], [2, 3]], "graph6": "C`", "max_pot": 1, "n": 4, "sizes": [1, 1, 1, 1], "total_boards": 1, "win": true}
+{"edges": [[0, 1], [2, 3]], "graph6": "C`", "max_pot": 2, "n": 4, "nearly_win": true, "sizes": [1, 1, 1, 1], "total_boards": 8, "win": false}
+{"edges": [[1, 2], [1, 3], [2, 3]], "graph6": "CJ", "max_pot": 2, "n": 4, "nearly_win": false, "sizes": [0, 2, 2, 2], "total_boards": 1, "win": false}
+{"edges": [[1, 2], [1, 3], [2, 3]], "graph6": "CJ", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [0, 2, 2, 2], "total_boards": 5, "win": false}
+{"edges": [[0, 3], [1, 3], [2, 3]], "graph6": "CF", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [1, 1, 1, 3], "total_boards": 5, "win": false}
+{"edges": [[0, 3], [1, 3], [2, 3]], "graph6": "CF", "max_pot": 4, "n": 4, "nearly_win": false, "sizes": [1, 1, 1, 3], "total_boards": 15, "win": false}
+{"edges": [[0, 1], [0, 3], [1, 2]], "graph6": "Ck", "max_pot": 2, "n": 4, "nearly_win": false, "sizes": [2, 2, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 3], [1, 2]], "graph6": "Ck", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [2, 2, 1, 1], "total_boards": 14, "win": false}
+{"edges": [[0, 3], [1, 2], [1, 3], [2, 3]], "graph6": "CN", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [1, 2, 2, 3], "total_boards": 5, "win": false}
+{"edges": [[0, 3], [1, 2], [1, 3], [2, 3]], "graph6": "CN", "max_pot": 4, "n": 4, "nearly_win": false, "sizes": [1, 2, 2, 3], "total_boards": 28, "win": false}
+{"edges": [[0, 1], [0, 3], [1, 2], [2, 3]], "graph6": "Cl", "max_pot": 2, "n": 4, "sizes": [2, 2, 2, 2], "total_boards": 1, "win": true}
+{"edges": [[0, 1], [0, 3], [1, 2], [2, 3]], "graph6": "Cl", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [2, 2, 2, 2], "total_boards": 14, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3]], "graph6": "C|", "max_pot": 3, "n": 4, "nearly_win": false, "sizes": [3, 2, 3, 2], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3]], "graph6": "C|", "max_pot": 4, "n": 4, "nearly_win": false, "sizes": [3, 2, 3, 2], "total_boards": 28, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]], "graph6": "C~", "max_pot": 3, "n": 4, "sizes": [3, 3, 3, 3], "total_boards": 1, "win": true}
+{"edges": [[0, 1], [0, 2], [0, 3], [1, 2], [1, 3], [2, 3]], "graph6": "C~", "max_pot": 4, "n": 4, "nearly_win": false, "sizes": [3, 3, 3, 3], "total_boards": 15, "win": false}
+{"edges": [[3, 4]], "graph6": "D?C", "max_pot": 1, "n": 5, "sizes": [0, 0, 0, 1, 1], "total_boards": 1, "win": true}
+{"edges": [[3, 4]], "graph6": "D?C", "max_pot": 2, "n": 5, "nearly_win": true, "sizes": [0, 0, 0, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [1, 2]], "graph6": "Dg?", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [1, 2, 1, 0, 0], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [1, 2]], "graph6": "Dg?", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 2, 1, 0, 0], "total_boards": 5, "win": false}
+{"edges": [[0, 2], [3, 4]], "graph6": "DOC", "max_pot": 1, "n": 5, "sizes": [1, 0, 1, 1, 1], "total_boards": 1, "win": true}
+{"edges": [[0, 2], [3, 4]], "graph6": "DOC", "max_pot": 2, "n": 5, "nearly_win": true, "sizes": [1, 0, 1, 1, 1], "total_boards": 8, "win": false}
+{"edges": [[0, 1], [0, 2], [1, 2]], "graph6": "Dw?", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 0, 0], "total_boards": 1, "win": false}
+{"edges": [[0, 1], [0, 2], [1, 2]], "graph6": "Dw?", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 0, 0], "total_boards": 5, "win": false}
+{"edges": [[1, 3], [2, 3], [3, 4]], "graph6": "DBC", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [0, 1, 1, 3, 1], "total_boards": 5, "win": false}
+{"edges": [[1, 3], [2, 3], [3, 4]], "graph6": "DBC", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [0, 1, 1, 3, 1], "total_boards": 15, "win": false}
+{"edges": [[0, 4], [2, 3], [3, 4]], "graph6": "D@c", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [1, 0, 1, 2, 2], "total_boards": 2, "win": false}
+{"edges": [[0, 4], [2, 3], [3, 4]], "graph6": "D@c", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 0, 1, 2, 2], "total_boards": 14, "win": false}
+{"edges": [[0, 1], [1, 2], [3, 4]], "graph6": "DgC", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [1, 2, 1, 1, 1], "total_boards": 8, "win": false}
+{"edges": [[0, 1], [1, 2], [3, 4]], "graph6": "DgC", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 2, 1, 1, 1], "total_boards": 41, "win": false}
+{"edges": [[1, 2], [1, 3], [2, 3], [3, 4]], "graph6": "DJC", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [0, 2, 2, 3, 1], "total_boards": 5, "win": false}
+{"edges": [[1, 2], [1, 3], [2, 3], [3, 4]], "graph6": "DJC", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [0, 2, 2, 3, 1], "total_boards": 28, "win": false}
+{"edges": [[0, 1], [0, 3], [1, 2], [2, 3]], "graph6": "Dl?", "max_pot": 2, "n": 5, "sizes": [2, 2, 2, 2, 0], "total_boards": 1, "win": true}
+{"edges": [[0, 1], [0, 3], [1, 2], [2, 3]], "graph6": "Dl?", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 2, 0], "total_boards": 14, "win": false}
+{"edges": [[0, 4], [1, 4], [2, 4], [3, 4]], "graph6": "D?{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 1, 1, 1, 4], "total_boards": 15, "win": false}
+{"edges": [[0, 4], [1, 4], [2, 4], [3, 4]], "graph6": "D?{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [1, 1, 1, 1, 4], "total_boards": 52, "win": false}
+{"edges": [[0, 4], [1, 3], [2, 3], [3, 4]], "graph6": "DBc", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 1, 1, 3, 2], "total_boards": 14, "win": false}
+{"edges": [[0, 4], [1, 3], [2, 3], [3, 4]], "graph6": "DBc", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 1, 1, 3, 2], "total_boards": 72, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 2], [2, 3]], "graph6": "Dh_", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 2], [2, 3]], "graph6": "Dh_", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 1, 1], "total_boards": 41, "win": false}
+{"edges": [[0, 1], [0, 2], [1, 2], [3, 4]], "graph6": "DwC", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 1, 1], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 2], [1, 2], [3, 4]], "graph6": "DwC", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 1, 1], "total_boards": 41, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3]], "graph6": "D|?", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [3, 2, 3, 2, 0], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [1, 2], [2, 3]], "graph6": "D|?", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 2, 3, 2, 0], "total_boards": 28, "win": false}
+{"edges": [[0, 4], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "D@{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 1, 2, 2, 4], "total_boards": 28, "win": false}
+{"edges": [[0, 4], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "D@{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [1, 1, 2, 2, 4], "total_boards": 142, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 4], [1, 2], [2, 3]], "graph6": "Dx_", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [3, 2, 3, 1, 1], "total_boards": 5, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 4], [1, 2], [2, 3]], "graph6": "Dx_", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 2, 3, 1, 1], "total_boards": 72, "win": false}
+{"edges": [[0, 4], [1, 2], [1, 3], [2, 3], [3, 4]], "graph6": "DJc", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 2, 2, 3, 2], "total_boards": 14, "win": false}
+{"edges": [[0, 4], [1, 2], [1, 3], [2, 3], [3, 4]], "graph6": "DJc", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 2, 2, 3, 2], "total_boards": 152, "win": false}
+{"edges": [[0, 1], [1, 3], [1, 4], [2, 3], [2, 4]], "graph6": "DbW", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 3, 2, 2, 2], "total_boards": 14, "win": false}
+{"edges": [[0, 1], [1, 3], [1, 4], [2, 3], [2, 4]], "graph6": "DbW", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 3, 2, 2, 2], "total_boards": 152, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 2], [2, 3], [3, 4]], "graph6": "Dhc", "max_pot": 2, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 2, 2], "total_boards": 1, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 2], [2, 3], [3, 4]], "graph6": "Dhc", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 2, 2], "total_boards": 41, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 3], [1, 4], [3, 4]], "graph6": "Des", "max_pot": 3, "n": 5, "sizes": [3, 3, 0, 3, 3], "total_boards": 1, "win": true}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 3], [1, 4], [3, 4]], "graph6": "Des", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 3, 0, 3, 3], "total_boards": 15, "win": false}
+{"edges": [[0, 1], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4]], "graph6": "DjW", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 4, 3, 2, 2], "total_boards": 28, "win": false}
+{"edges": [[0, 1], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4]], "graph6": "DjW", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [1, 4, 3, 2, 2], "total_boards": 258, "win": false}
+{"edges": [[0, 1], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Db[", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [1, 3, 2, 3, 3], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Db[", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 3, 2, 3, 3], "total_boards": 72, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "D`{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 2, 4], "total_boards": 60, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "D`{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 2, 4], "total_boards": 483, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 2], [2, 3], [3, 4]], "graph6": "Dlc", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [3, 2, 2, 3, 2], "total_boards": 5, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 2], [2, 3], [3, 4]], "graph6": "Dlc", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 2, 2, 3, 2], "total_boards": 152, "win": false}
+{"edges": [[0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4]], "graph6": "D]o", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [3, 3, 2, 2, 2], "total_boards": 5, "win": false}
+{"edges": [[0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4]], "graph6": "D]o", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 3, 2, 2, 2], "total_boards": 152, "win": false}
+{"edges": [[0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "DJ{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [1, 3, 3, 3, 4], "total_boards": 15, "win": false}
+{"edges": [[0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "DJ{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [1, 3, 3, 3, 4], "total_boards": 258, "win": false}
+{"edges": [[0, 3], [0, 4], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "DF{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 4, 4], "total_boards": 12, "win": false}
+{"edges": [[0, 3], [0, 4], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "DF{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [2, 2, 2, 4, 4], "total_boards": 258, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [3, 4]], "graph6": "Djs", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [2, 4, 2, 3, 3], "total_boards": 28, "win": false}
+{"edges": [[0, 1], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [3, 4]], "graph6": "Djs", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [2, 4, 2, 3, 3], "total_boards": 483, "win": false}
+{"edges": [[0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 4]], "graph6": "D]w", "max_pot": 3, "n": 5, "nearly_win": false, "sizes": [3, 3, 3, 2, 3], "total_boards": 1, "win": false}
+{"edges": [[0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 4]], "graph6": "D]w", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 3, 3, 2, 3], "total_boards": 72, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Df{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 3, 2, 4, 4], "total_boards": 6, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Df{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [3, 3, 2, 4, 4], "total_boards": 258, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 2], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Dl{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 3, 3, 3, 4], "total_boards": 15, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 2], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Dl{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [3, 3, 3, 3, 4], "total_boards": 483, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Dn{", "max_pot": 4, "n": 5, "nearly_win": false, "sizes": [3, 4, 3, 4, 4], "total_boards": 2, "win": false}
+{"edges": [[0, 1], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "Dn{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [3, 4, 3, 4, 4], "total_boards": 142, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "D~{", "max_pot": 4, "n": 5, "nearly_win": true, "sizes": [4, 4, 4, 4, 4], "total_boards": 1, "win": false}
+{"edges": [[0, 1], [0, 2], [0, 3], [0, 4], [1, 2], [1, 3], [1, 4], [2, 3], [2, 4], [3, 4]], "graph6": "D~{", "max_pot": 5, "n": 5, "nearly_win": false, "sizes": [4, 4, 4, 4, 4], "total_boards": 52, "win": false}

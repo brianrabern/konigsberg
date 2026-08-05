@@ -65,6 +65,20 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "(certificate-checked); a miss at the default palette decides k-choosable "
         "(python-checked). All args JSON-native, so the agent can call it directly.",
     )
+    reg.register(
+        "alon_tarsi",
+        et.alon_tarsi,
+        "Given a graph6 string: search for an Alon–Tarsi orientation certificate "
+        "(sufficient for list-colorability). A hit is independently re-checked "
+        "(certificate-checked). A miss proves nothing — AT is sufficient only.",
+    )
+    reg.register(
+        "fixer_breaker",
+        et.fixer_breaker,
+        "Given a graph6 string and per-vertex list sizes: decide the online "
+        "choosability (paintability) fixer-breaker game. Returns solver-certified "
+        "(fingerprint-validated port; strategy certificate is a stretch goal).",
+    )
     if repl is not None:
         reg.register(
             "lean_check",

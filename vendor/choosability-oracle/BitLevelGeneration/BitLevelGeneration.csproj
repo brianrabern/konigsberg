@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>BitLevelGeneration</RootNamespace>
+    <AssemblyName>BitLevelGeneration</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- Sources live in landon-tools; do not fork. Path is relative to this csproj. -->
+    <Compile Include="../../../../landon-tools/WebGraphs/BitLevelGeneration/**/*.cs"
+             Exclude="../../../../landon-tools/WebGraphs/BitLevelGeneration/Properties/**" />
+  </ItemGroup>
+</Project>

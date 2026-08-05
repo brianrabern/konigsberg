@@ -46,7 +46,12 @@ def test_spec_is_serializable_name_doc():
 
 def test_lean_free_registry_has_only_empirical_tools():
     reg = build_registry()
-    assert set(reg.names()) == {"counterexample_search", "choosability_refute"}
+    assert set(reg.names()) == {
+        "counterexample_search",
+        "choosability_refute",
+        "alon_tarsi",
+        "fixer_breaker",
+    }
 
 
 def test_registry_with_repl_adds_formal_tools():
@@ -54,6 +59,8 @@ def test_registry_with_repl_adds_formal_tools():
     assert set(reg.names()) == {
         "counterexample_search",
         "choosability_refute",
+        "alon_tarsi",
+        "fixer_breaker",
         "lean_check",
         "lean_typecheck_statement",
         "lean_search",

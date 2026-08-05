@@ -58,15 +58,38 @@ def choosability_refute(graph6: str, k: int = 3, palette: int | None = None) -> 
     )
 
 
-def alon_tarsi(graph) -> Claim:
+def alon_tarsi(graph6: str) -> Claim:
+    """Sufficient list-colorability via Alon–Tarsi. Agent-callable (graph6).
+
+    A hit emits a re-checked orientation certificate → certificate-checked.
+    A miss proves nothing about choosability (AT is sufficient only) and is
+    stamped solver-certified with an honest "no verified certificate" statement.
+    """
+    graph = parse_graph6(graph6)
     cert = _at.certificate(graph)  # re-checkable orientation-difference object
     if cert is not None and _at.verify_certificate(graph, cert):
-        return mint_certificate("Alon-Tarsi list-colorable", checker="alon_tarsi.verify_certificate", tool="alon_tarsi")
-    return mint_solver_result("Alon-Tarsi (no verified certificate)", tool="alon_tarsi")
+        return mint_certificate(
+            f"{graph6} is Alon-Tarsi list-colorable "
+            f"(AT certificate: even={cert.even}, odd={cert.odd})",
+            checker="alon_tarsi.verify_certificate",
+            tool="alon_tarsi",
+        )
+    return mint_solver_result(
+        f"{graph6}: Alon-Tarsi (no verified certificate)",
+        tool="alon_tarsi",
+    )
 
 
-def fixer_breaker(graph, list_sizes) -> Claim:
-    """The differentiator: fixer-breaker game solver for online/list choosability."""
+def fixer_breaker(graph6: str, list_sizes: list[int]) -> Claim:
+    """Online/paintability via FixerBreaker. Agent-callable (graph6 + list sizes).
+
+    Until a winning-strategy certificate path lands (B4), results are
+    solver-certified (port validated against MindTests fingerprints).
+    """
+    graph = parse_graph6(graph6)
     result = _fb.solve(graph, list_sizes)
-    # TODO: emit + verify a winning-strategy certificate -> upgrade to mint_certificate.
-    return mint_solver_result(f"fixer-breaker: {result}", tool="fixer_breaker")
+    return mint_solver_result(
+        f"{graph6}: fixer-breaker {'fixer wins' if result else 'breaker wins'} "
+        f"(list sizes {list_sizes})",
+        tool="fixer_breaker",
+    )

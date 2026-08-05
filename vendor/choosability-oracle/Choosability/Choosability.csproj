@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <RootNamespace>Choosability</RootNamespace>
+    <AssemblyName>Choosability</AssemblyName>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>true</GenerateAssemblyInfo>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../BitLevelGeneration/BitLevelGeneration.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Sources live in landon-tools; do not fork. Path is relative to this csproj. -->
+    <!-- SuperSlimMind is replaced by patches/ (strict nearly-colorable; see ADJUDICATION). -->
+    <Compile Include="../../../../landon-tools/WebGraphs/Choosability/**/*.cs"
+             Exclude="../../../../landon-tools/WebGraphs/Choosability/Properties/**;../../../../landon-tools/WebGraphs/Choosability/FixerBreaker/KnowledgeEngine/Slim/Super/SuperSlimMind.cs" />
+    <Compile Include="../patches/SuperSlimMind.cs" />
+  </ItemGroup>
+</Project>
