@@ -1,8 +1,8 @@
 /-
 TransitiveClusteringBigCliques — stated.
 
-Connected vertex-transitive G with ω ≥ (2/3)(Δ+1): X_𝒬 edgeless, or X_𝒬 is a
-cycle and G is the blow-up of that cycle by K_{ω/2}.
+Connected vertex-transitive G with ω ≥ (2/3)(Δ+1): either X_𝒬 is edgeless, or
+X_𝒬 is a cycle and G is the clique blow-up of that cycle by K_{ω/2}.
 -/
 import Konigsberg.Areas.Coloring.CliqueCollection
 import Mathlib.Combinatorics.SimpleGraph.Circulant
@@ -18,15 +18,17 @@ variable [Fintype V] [DecidableEq V] [DecidableRel G.Adj]
 def IsVertexTransitive : Prop :=
   ∀ u v : V, ∃ f : G ≃g G, f u = v
 
-/-- Blow-up description: X_𝒬 ≃ cycle, each vertex blown to a K_{ω/2}.
-Stated as: the max-clique intersection graph is a cycle graph, and every max
-clique has size ω with the standard pairwise intersections of size ω/2 along
-the cycle (full combinatorial reconstruction deferred to the proof). -/
+/-- Book’s second alternative: `X_𝒬 ≃ C_n` and `G` is obtained from that cycle
+by blowing each vertex up to a `K_{ω/2}` (i.e. `G ≃ cliqueBlowup C_n (ω/2)`). -/
 def IsCycleBlowupOfHalfOmega (𝒬 : Set (Finset V)) : Prop :=
-  ∃ n : ℕ, n ≥ 3 ∧ Nonempty (cliqueIntersectionGraph 𝒬 ≃g cycleGraph n) ∧
-    (∀ Q ∈ 𝒬, #Q = G.cliqueNum) ∧ Even G.cliqueNum
+  ∃ n : ℕ, 3 ≤ n ∧ Even G.cliqueNum ∧
+    Nonempty (cliqueIntersectionGraph 𝒬 ≃g cycleGraph n) ∧
+    Nonempty (G ≃g cliqueBlowup (cycleGraph n) (G.cliqueNum / 2))
 
-/-- **TransitiveClusteringBigCliques** (gct \\label{TransitiveClusteringBigCliques}). -/
+/-- **TransitiveClusteringBigCliques** (gct \\label{TransitiveClusteringBigCliques}).
+
+`𝒬` is the *full* max-clique collection (book: “the collection of all maximum
+cliques”). -/
 theorem transitiveClusteringBigCliques
     (hconn : G.Connected) (hvt : IsVertexTransitive G)
     (hω : 3 * G.cliqueNum ≥ 2 * G.maxDegree + 2) :

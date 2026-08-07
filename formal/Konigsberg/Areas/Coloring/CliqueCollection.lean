@@ -35,4 +35,26 @@ noncomputable def maxCliqueIntersectionGraph
     SimpleGraph ↑(maxCliqueCollection G) :=
   cliqueIntersectionGraph (maxCliqueCollection G)
 
+/-- Clique blow-up of `H` by size `k`: vertex set `α × Fin k`; within each
+fibre a clique, and fibres joined by a complete bipartite graph iff the
+base vertices are adjacent in `H`.
+
+Matches the book phrase “obtained from `X` by blowing up each vertex to a
+`K_k`” (gct TransitiveClusteringBigCliques). -/
+def cliqueBlowup {α : Type*} (H : SimpleGraph α) (k : ℕ) :
+    SimpleGraph (α × Fin k) where
+  Adj := fun ⟨a, i⟩ ⟨b, j⟩ => (a = b ∧ i ≠ j) ∨ H.Adj a b
+  symm := by
+    refine ⟨fun x y h => ?_⟩
+    rcases x with ⟨a, i⟩; rcases y with ⟨b, j⟩
+    rcases h with ⟨rfl, hij⟩ | hadj
+    · exact Or.inl ⟨rfl, hij.symm⟩
+    · exact Or.inr hadj.symm
+  loopless := by
+    refine ⟨fun x h => ?_⟩
+    rcases x with ⟨a, i⟩
+    rcases h with ⟨_, hii⟩ | hadj
+    · exact hii rfl
+    · exact hadj.ne rfl
+
 end Konigsberg.Areas.Coloring
