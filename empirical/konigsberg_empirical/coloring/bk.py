@@ -114,3 +114,24 @@ def find_bad_k2_critical(
             "bad_list": [sorted(s) for s in bad],
             "critical": critical,
         }
+
+
+# Default family for the Rabern-style BK attack scan (NOT Δ≥9 chromatic tight graphs).
+BK_SEARCH_CONSTRAINTS: dict = {
+    "connected": True,
+    "min_degree": 3,
+    "max_degree": 4,
+}
+
+
+def to_graph6(graph: Graph) -> str:
+    """graph6 string for interop; falls back to an edge-list encoding."""
+    try:
+        import networkx as nx
+
+        G = nx.Graph()
+        G.add_nodes_from(range(graph.n))
+        G.add_edges_from(graph.edges)
+        return nx.to_graph6_bytes(G, header=False).decode().strip()
+    except ImportError:
+        return f"n={graph.n} edges={sorted(graph.edges)}"

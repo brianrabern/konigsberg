@@ -21,12 +21,21 @@ class _NoteArgs(BaseModel):
     text: str
 
 
-_ALL_TEN = {
+_EMPIRICAL = {
+    "literature_search",
     "counterexample_search",
     "choosability_refute",
     "alon_tarsi",
     "fixer_breaker",
     "decide_colorable",
+    "max_degree",
+    "clique_number",
+    "chromatic_number",
+    "bk_predicate",
+    "bk_search",
+}
+
+_FORMAL = {
     "lean_check",
     "lean_typecheck_statement",
     "lean_search",
@@ -34,14 +43,16 @@ _ALL_TEN = {
     "verify_coloring",
 }
 
-_MODEL_EXPOSED_WITH_LEAN = _ALL_TEN - {"counterexample_search"}
+_ALL_TOOLS = _EMPIRICAL | _FORMAL
+
+_MODEL_EXPOSED_WITH_LEAN = _ALL_TOOLS - {"counterexample_search"}
 
 
-def test_build_registry_stub_repl_exposes_ten_tools_via_repl_tool_specs(capsys, tmp_path):
-    """build_registry(stub_repl) → all ten tools; model-exposed nine via tool_specs."""
+def test_build_registry_stub_repl_exposes_all_tools_via_repl_tool_specs(capsys, tmp_path):
+    """build_registry(stub_repl) → all tools; model-exposed omit code-only."""
     stub = StubREPL(GoalState(goals=[], errors=[], infos=[]))
     reg = build_registry(stub)
-    assert set(reg.names()) == _ALL_TEN
+    assert set(reg.names()) == _ALL_TOOLS
 
     store = SessionStore(tmp_path)
     repl = Repl(store=store, registry=reg, model=ScriptedReplModel(), lean_repl=None)
@@ -65,7 +76,13 @@ def test_tools_header_unavailable_when_lean_free(capsys, tmp_path):
     assert repl.handle_slash("/tools") is False
     out = capsys.readouterr().out
     assert "formal tier: unavailable (no Lean toolchain)" in out
-    assert "verify_coloring" not in out
+    # Formal tools must not be registered (docstrings of empirical tools may
+    # mention verify_coloring as an upgrade path).
+    names = {s["name"] for s in repl.registry.tool_specs()}
+    assert "verify_coloring" not in names
+    assert "lean_prove" not in names
+    assert "chromatic_number" in names
+    assert "bk_predicate" in names
 
 
 def test_slash_ledger_tools_compact(tmp_path, capsys):

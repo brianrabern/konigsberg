@@ -16,6 +16,7 @@ Two tiers of difficulty, kept honest:
 from __future__ import annotations
 
 from collections.abc import Callable, Sequence
+from dataclasses import dataclass
 from itertools import combinations, product
 
 from ..core import Graph
@@ -193,6 +194,113 @@ def chromatic_number(graph: Graph) -> int:
         if is_k_colorable(graph, k):
             return k
     return graph.n  # unreachable for a simple graph, but a safe floor
+
+
+def clique_number_witness(graph: Graph) -> tuple[int, list[int]]:
+    """Return (ω(G), witnessing clique). Exhaustive; intended for small n."""
+    if graph.n == 0:
+        return 0, []
+    for size in range(graph.n, 0, -1):
+        clique = find_clique(graph, size)
+        if clique is not None:
+            return size, clique
+    return 1, [0]
+
+
+@dataclass(frozen=True)
+class ChromaticCertificates:
+    """Honest χ: coloring (upper) + not-(χ−1) obstruction/decision (lower)."""
+
+    chi: int
+    coloring: list[int]
+    omega: int
+    clique: list[int]
+    lower_detail: str  # human-readable not-(χ−1) certificate
+    lower_kind: str  # "clique" | "odd_cycle" | "unsat" | "none"
+
+
+def _find_coloring(graph: Graph, k: int) -> list[int] | None:
+    """Prefer SAT when available; else backtracking."""
+    try:
+        from ..search import sat
+
+        if sat.is_available():
+            return sat.sat_find_k_coloring(graph, k)
+    except ImportError:
+        pass
+    return find_k_coloring(graph, k)
+
+
+def chromatic_certificates(graph: Graph) -> ChromaticCertificates:
+    """Compute χ with both directions: χ-coloring and not-(χ−1) evidence.
+
+    Searches upward from ω. Lower bound prefers a re-checkable obstruction
+    (clique / odd cycle); else records a complete UNSAT decision.
+    """
+    omega, clique = clique_number_witness(graph)
+    if graph.n == 0:
+        return ChromaticCertificates(0, [], 0, [], "empty graph", "none")
+
+    lo = max(omega, 1)
+    coloring: list[int] | None = None
+    chi = graph.n
+    for k in range(lo, graph.n + 1):
+        coloring = _find_coloring(graph, k)
+        if coloring is not None:
+            chi = k
+            break
+    if coloring is None:
+        coloring = list(range(graph.n))
+        chi = graph.n
+
+    if chi <= 1:
+        return ChromaticCertificates(
+            chi, list(coloring), omega, clique, "no lower bound (χ≤1)", "none"
+        )
+
+    obs = find_noncolorability_obstruction(graph, chi - 1)
+    if obs is not None:
+        kind, verts = obs
+        if kind == "clique":
+            detail = f"clique K_{chi} on {verts}"
+        else:
+            detail = f"odd cycle {verts}"
+        return ChromaticCertificates(
+            chi, list(coloring), omega, clique, detail, kind
+        )
+
+    # Completeness of the decision procedure for (χ−1)-colorability.
+    assert _find_coloring(graph, chi - 1) is None
+    return ChromaticCertificates(
+        chi,
+        list(coloring),
+        omega,
+        clique,
+        f"complete UNSAT for {chi - 1}-colorability",
+        "unsat",
+    )
+
+
+def verify_chromatic_bundle(graph: Graph, certs: ChromaticCertificates) -> bool:
+    """Independently re-check a ChromaticCertificates bundle."""
+    if not verify_clique(graph, certs.clique):
+        return False
+    if len(certs.clique) != certs.omega and not (
+        certs.omega == 0 and graph.n == 0
+    ):
+        return False
+    if not is_proper_coloring(graph, certs.coloring, k=certs.chi):
+        return False
+    if certs.chi <= 1:
+        return True
+    if certs.lower_kind == "clique":
+        # Clique of size χ forbids (χ−1)-colorability.
+        return find_clique(graph, certs.chi) is not None
+    if certs.lower_kind == "odd_cycle":
+        return find_odd_cycle(graph) is not None and certs.chi == 3
+    if certs.lower_kind == "unsat":
+        return _find_coloring(graph, certs.chi - 1) is None
+    return certs.lower_kind == "none"
 
 
 def is_k_choosable(

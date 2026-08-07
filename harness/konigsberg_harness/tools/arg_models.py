@@ -33,6 +33,28 @@ class DecideColorableArgs(BaseModel):
     k: int
 
 
+class Graph6Args(BaseModel):
+    graph6: str
+
+
+class BkPredicateArgs(BaseModel):
+    graph6: str
+
+
+class BkSearchArgs(BaseModel):
+    n_max: int
+    k: int = 3
+    n_min: int = 6
+    palette: int | None = None
+    max_hits: int = 5
+
+
+class LiteratureSearchArgs(BaseModel):
+    query: str
+    area: str | None = None
+    status: str | None = None
+
+
 class LeanCheckArgs(BaseModel):
     snippet: str
 

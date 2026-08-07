@@ -1,5 +1,8 @@
 # External formalizations (not in-tree)
 
+> Machine-readable index: [`EXTERNAL.toml`](EXTERNAL.toml) — `library_map()` /
+> `literature_search` read the toml, not this markdown. Keep them in sync.
+
 Artifacts verified under a **different pinned toolchain** than Konigsberg's
 `formal/` lake pin. They are **not** the same trust root as an in-tree
 `status = "formalized"` / ledger `proved` Claim: Konigsberg's gates

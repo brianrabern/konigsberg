@@ -1,0 +1,29 @@
+# External formalizations — machine-readable index
+# Companion to EXTERNAL.md (human doc). library_map() reads THIS file, not the markdown.
+# Status is always "external-verified": verified under a different pin than Konigsberg's
+# formal/ lake; not the same trust root as in-tree "formalized".
+
+[[external]]
+name = "BrooksLean"
+citation = "Brooks' theorem (Rabern form) — github.com/brianrabern/BrooksLean"
+area = "coloring"
+repo = "https://github.com/brianrabern/BrooksLean"
+commit = "1d990050d881327fc79dd51e82ba4449b4e2467d"
+lean = "v4.33.0-rc1"
+mathlib = "cb48454af87fbe318fc368e6eb02c9156e1936c1"
+konigsberg_lean = "v4.31.0"
+stage0_date = "2026-08-07"
+
+[[external.claims]]
+lean_name = "SimpleGraph.brooks"
+status = "external-verified"
+statement = """
+theorem brooks (G : SimpleGraph V) [Fintype V] [DecidableRel G.Adj]
+    (h : ¬ G.Colorable G.maxDegree) :
+    ¬ G.CliqueFree (G.maxDegree + 1) ∨ (G.maxDegree = 2 ∧ G.HasOddCycle)
+"""
+
+[[external.claims]]
+lean_name = "SimpleGraph.colorable_two_iff_not_hasOddCycle"
+status = "external-verified"
+statement = "G.Colorable 2 ↔ ¬ G.HasOddCycle"

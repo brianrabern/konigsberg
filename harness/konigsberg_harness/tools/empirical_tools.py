@@ -150,3 +150,210 @@ def decide_colorable(graph6: str, k: int) -> Claim:
         exhaustive=True,
         tool="decide_colorable",
     )
+
+
+def max_degree(graph6: str) -> Claim:
+    """Δ(G) with degree sequence. Trivial; python-checked."""
+    graph = parse_graph6(graph6)
+    deg = [graph.degree(v) for v in range(graph.n)]
+    delta = max(deg) if deg else 0
+    return mint_enumeration(
+        f"{graph6} has Δ={delta} (degree sequence {deg})",
+        bound=f"n={graph.n}",
+        exhaustive=True,
+        tool="max_degree",
+    )
+
+
+def clique_number(graph6: str) -> Claim:
+    """ω(G) with a witnessing clique (re-checked) → certificate-checked."""
+    from konigsberg_empirical.coloring import list_checks as lc
+
+    graph = parse_graph6(graph6)
+    omega, clique = lc.clique_number_witness(graph)
+    if not lc.verify_clique(graph, clique) or len(clique) != omega:
+        raise ValueError("clique witness failed independent check")
+    return mint_certificate(
+        f"{graph6} has ω={omega} (witnessing clique {list(clique)})",
+        checker="list_checks.verify_clique",
+        tool="clique_number",
+    )
+
+
+def chromatic_number(graph6: str) -> Claim:
+    """χ(G): least k with a proper coloring, searching up from ω.
+
+    Returns both certificates: a proper χ-coloring (upper — feed to
+    verify_coloring for a kernel upgrade) and not-(χ−1) evidence (lower).
+    certificate-checked when the bundle re-verifies.
+    """
+    from konigsberg_empirical.coloring import list_checks as lc
+
+    graph = parse_graph6(graph6)
+    certs = lc.chromatic_certificates(graph)
+    if not lc.verify_chromatic_bundle(graph, certs):
+        raise ValueError("chromatic certificate bundle failed independent check")
+
+    stmt = (
+        f"{graph6} has χ={certs.chi} "
+        f"(χ-coloring {certs.coloring}; not {max(certs.chi - 1, 0)}-colorable: "
+        f"{certs.lower_detail}; ω={certs.omega} clique {certs.clique})"
+    )
+    if certs.lower_kind in ("clique", "odd_cycle", "none") or (
+        certs.lower_kind == "unsat" and certs.chi <= 1
+    ):
+        return mint_certificate(
+            stmt,
+            checker="list_checks.verify_chromatic_bundle",
+            tool="chromatic_number",
+        )
+    # Lower bound rests on complete decision completeness (no extracted obstruction).
+    return mint_enumeration(
+        stmt + " [lower bound via complete decision]",
+        bound=f"chromatic n={graph.n}",
+        exhaustive=True,
+        tool="chromatic_number",
+    )
+
+
+def bk_predicate(graph6: str, *, repl=None) -> Claim | list[Claim]:
+    """Evaluate the Borodin–Kostochka conjecture on one graph.
+
+    Hypothesis: Δ ≥ 9. Claim: χ ≤ max{ω, Δ−1}.
+    Returns hypothesis-not-met / satisfies / VIOLATES, carrying Δ/ω/χ certificates.
+    A violation is maximally certified (degree sequence, ω-clique, χ-coloring,
+    not-(χ−1) evidence); when a Lean REPL is bound, the χ-coloring is also
+    kernel-upgraded via verify_coloring. Ordinary chromatic BK only — not choosability.
+
+    Honest note: a counterexample requires χ = Δ, ω ≤ Δ−1, Δ ≥ 9 (since
+    χ ≤ Δ+1 and χ = Δ+1 forces K_{Δ+1} by Brooks) — the tight regime.
+    """
+    from konigsberg_empirical.coloring import list_checks as lc
+
+    graph = parse_graph6(graph6)
+    deg = [graph.degree(v) for v in range(graph.n)]
+    delta = max(deg) if deg else 0
+
+    if delta < 9:
+        return mint_enumeration(
+            f"{graph6}: BK hypothesis not met (Δ={delta} < 9; "
+            f"graph irrelevant to the conjecture; degrees {deg})",
+            bound=f"Δ={delta}",
+            exhaustive=True,
+            tool="bk_predicate",
+        )
+
+    certs = lc.chromatic_certificates(graph)
+    if not lc.verify_chromatic_bundle(graph, certs):
+        raise ValueError("BK certificate bundle failed independent check")
+    bound = max(certs.omega, delta - 1)
+    tight_note = (
+        "Note: a counterexample requires χ=Δ, ω≤Δ−1, Δ≥9 "
+        "(χ≤Δ+1 and χ=Δ+1 forces K_{Δ+1} by Brooks) — the tight regime."
+    )
+    bundle = (
+        f"Δ={delta}, ω={certs.omega}, χ={certs.chi}, "
+        f"max(ω,Δ−1)={bound}; degrees {deg}; "
+        f"clique {certs.clique}; χ-coloring {certs.coloring}; "
+        f"not {certs.chi - 1}-colorable: {certs.lower_detail}"
+    )
+
+    if certs.chi <= bound:
+        return mint_certificate(
+            f"{graph6} satisfies BK ({bundle}). {tight_note}",
+            checker="list_checks.verify_chromatic_bundle",
+            tool="bk_predicate",
+        )
+
+    # Violation — major; maximally certified.
+    main = mint_certificate(
+        f"{graph6} VIOLATES BK ({bundle}). {tight_note}",
+        checker="list_checks.verify_chromatic_bundle",
+        tool="bk_predicate",
+    )
+    if repl is None:
+        return main
+
+    from .bridge import verify_coloring
+
+    proved = verify_coloring(graph6, certs.coloring, repl=repl)
+    return [main, proved]
+
+
+def bk_search(
+    n_max: int,
+    k: int = 3,
+    n_min: int = 6,
+    palette: int | None = None,
+    max_hits: int = 5,
+) -> Claim:
+    """Principled Rabern-style BK candidate search (bad-K₂ / choice-critical).
+
+    Family: connected graphs with degrees in {3,4}, enumerated via geng (or
+    atlas for n≤7). Filters: bad-K₂ edge, K4-free, k-colorable, then
+    choosability / edge-choice-criticality via find_bad_k2_critical.
+
+    LIMITS: this is NOT a search over Δ≥9 chromatic-BK-tight graphs — those
+    require ≥10 vertices and a degree-≥9 vertex. Hits here are choice-critical
+    candidates in the deg-{3,4} family; evaluate chromatic BK with bk_predicate
+    (which will reject Δ<9 as hypothesis-not-met). Prefer this over inventing
+    graph6 strings.
+    """
+    from konigsberg_empirical.coloring import bk as _bk
+    from konigsberg_empirical.coloring import choosability as ch
+    from konigsberg_empirical.search.enumerate import all_graphs
+
+    from .errors import ToolUnavailable
+
+    if not ch.is_available():
+        raise ToolUnavailable("bk_search", "pysat not installed")
+    if n_min < 1 or n_max < n_min:
+        raise ValueError(f"bad n range: n_min={n_min}, n_max={n_max}")
+    if max_hits < 1:
+        raise ValueError("max_hits must be ≥1")
+
+    hits: list[dict] = []
+    scanned = 0
+    for n in range(n_min, n_max + 1):
+        for hit in _bk.find_bad_k2_critical(
+            all_graphs(n, constraints=_bk.BK_SEARCH_CONSTRAINTS),
+            k=k,
+            palette=palette,
+        ):
+            scanned += 1
+            g = hit["graph"]
+            hits.append(
+                {
+                    "n": n,
+                    "graph6": _bk.to_graph6(g),
+                    "bad_k2_edges": hit["bad_k2_edges"],
+                    "bad_list": hit["bad_list"],
+                    "critical": hit["critical"],
+                }
+            )
+            if len(hits) >= max_hits:
+                break
+        if len(hits) >= max_hits:
+            break
+
+    pal = palette if palette is not None else "k*n (complete)"
+    limits = (
+        "LIMITS: family=connected deg∈{3,4}; filters=bad-K2,K4-free,k-colorable,"
+        "choice-criticality — not a Δ≥9 chromatic BK search"
+    )
+    if not hits:
+        stmt = (
+            f"bk_search n={n_min}..{n_max} k={k} palette={pal}: no hits. {limits}"
+        )
+    else:
+        stmt = (
+            f"bk_search n={n_min}..{n_max} k={k} palette={pal}: "
+            f"{len(hits)} hit(s) {hits}. {limits}"
+        )
+    complete = palette is None
+    return mint_enumeration(
+        stmt,
+        bound=f"n={n_min}..{n_max} deg∈{{3,4}} scanned_hits={scanned}",
+        exhaustive=complete,
+        tool="bk_search",
+    )

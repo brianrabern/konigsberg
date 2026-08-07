@@ -88,12 +88,13 @@ class ClaimMinted:
 
 @dataclass(frozen=True)
 class AssistantFinal:
-    """Final answer: ``text`` is the two-zone render; ``commentary`` is raw prose."""
+    """Final answer: ``text`` is the zone render; ``commentary`` is raw prose."""
 
     text: str
     commentary: str
     claims: tuple[Claim, ...] = ()
     failures: tuple[str, ...] = ()
+    references: tuple[dict, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -115,6 +116,31 @@ def _render_result(result: object) -> str:
     if isinstance(result, list):
         return "results: " + ("; ".join(map(str, result)) if result else "(none)")
     return str(result)
+
+
+def _claims_from_result(result: object) -> list[Claim] | None:
+    """Extract minted Claims from a tool result (single or bundle)."""
+    if isinstance(result, Claim):
+        return [result]
+    if (
+        isinstance(result, (list, tuple))
+        and result
+        and all(isinstance(c, Claim) for c in result)
+    ):
+        return list(result)
+    return None
+
+
+def _literature_hits_from_result(result: object) -> list[dict] | None:
+    """Detect literature_search hit dicts (status-bearing; not Claims)."""
+    if not isinstance(result, list) or not result:
+        return None
+    if all(
+        isinstance(d, dict) and "status" in d and "lean_name" in d and "name" in d
+        for d in result
+    ):
+        return list(result)
+    return None
 
 
 def _seed_user_message(task: str) -> UserMsg:
@@ -182,6 +208,7 @@ class Agent:
         tools = self.registry.tool_specs()
         turn_claims: list[Claim] = []
         turn_failures: list[str] = []
+        turn_refs: list[dict] = []
 
         for _ in range(self.config.max_steps):
             if self._interrupt:
@@ -198,12 +225,14 @@ class Agent:
                     commentary=turn.text,
                     claims=turn_claims,
                     failures=turn_failures,
+                    references=turn_refs,
                 )
                 yield AssistantFinal(
                     text=grounded,
                     commentary=turn.text,
                     claims=tuple(turn_claims),
                     failures=tuple(turn_failures),
+                    references=tuple(turn_refs),
                 )
                 return
 
@@ -268,15 +297,25 @@ class Agent:
                         return
                     continue
 
-                if isinstance(result, Claim):
-                    self._persist_claim(session, result, store)
-                    turn_claims.append(result)
-                    rendered = result.render()
+                claims = _claims_from_result(result)
+                if claims is not None:
+                    for claim in claims:
+                        self._persist_claim(session, claim, store)
+                        turn_claims.append(claim)
+                    rendered = (
+                        claims[0].render()
+                        if len(claims) == 1
+                        else "\n".join(c.render() for c in claims)
+                    )
                     tr = ToolResultMsg(id=call.id, content=rendered)
                     self._persist_item(session, tr, store)
                     yield ToolResult(call=call, content=rendered, is_error=False)
-                    yield ClaimMinted(result)
+                    for claim in claims:
+                        yield ClaimMinted(claim)
                 else:
+                    lit_hits = _literature_hits_from_result(result)
+                    if lit_hits is not None:
+                        turn_refs.extend(lit_hits)
                     rendered = _render_result(result)
                     tr = ToolResultMsg(id=call.id, content=rendered)
                     self._persist_item(session, tr, store)

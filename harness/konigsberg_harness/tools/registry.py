@@ -14,13 +14,17 @@ from pydantic import BaseModel, ValidationError
 
 from .arg_models import (
     AlonTarsiArgs,
+    BkPredicateArgs,
+    BkSearchArgs,
     ChoosabilityRefuteArgs,
     DecideColorableArgs,
     FixerBreakerArgs,
+    Graph6Args,
     LeanCheckArgs,
     LeanProveArgs,
     LeanSearchArgs,
     LeanTypecheckStatementArgs,
+    LiteratureSearchArgs,
     VerifyColoringArgs,
     schema_for,
 )
@@ -102,8 +106,17 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
     """
     from . import empirical_tools as et
     from . import lean_tools as lt
+    from . import literature_tools as lit
 
     reg = ToolRegistry()
+    reg.register(
+        "literature_search",
+        lit.literature_search,
+        "Search the in-repo Literature corpus (and EXTERNAL.toml). Returns "
+        "status-bearing records (formalized / stated / external-verified); does "
+        "NOT mint ledger Claims. Carry each hit's status verbatim — stated ≠ proven.",
+        args_model=LiteratureSearchArgs,
+    )
     reg.register(
         "counterexample_search",
         et.counterexample_search,
@@ -145,6 +158,48 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "mints a not-k-colorable Claim (certificate-checked on a clique/odd-cycle "
         "obstruction when extractable, else python-checked at SAT completeness).",
         args_model=DecideColorableArgs,
+    )
+    reg.register(
+        "max_degree",
+        et.max_degree,
+        "Given graph6: compute Δ(G) with the degree sequence. python-checked.",
+        args_model=Graph6Args,
+    )
+    reg.register(
+        "clique_number",
+        et.clique_number,
+        "Given graph6: compute ω(G) with a witnessing clique (re-checked). "
+        "certificate-checked.",
+        args_model=Graph6Args,
+    )
+    reg.register(
+        "chromatic_number",
+        et.chromatic_number,
+        "Given graph6: compute χ(G) searching up from ω. Returns a χ-coloring "
+        "(upper; upgrade via verify_coloring) and not-(χ−1) evidence (lower). "
+        "Ordinary chromatic number — not choosability.",
+        args_model=Graph6Args,
+    )
+    _bk_pred = (
+        partial(et.bk_predicate, repl=repl) if repl is not None else et.bk_predicate
+    )
+    reg.register(
+        "bk_predicate",
+        _bk_pred,
+        "Evaluate Borodin–Kostochka on graph6: hypothesis Δ≥9; claims "
+        "χ ≤ max{ω, Δ−1}. Returns hypothesis-not-met / satisfies / VIOLATES with "
+        "Δ/ω/χ certificates. Ordinary chromatic BK — not choosability. "
+        "On a violation (and Lean available), also kernel-upgrades the χ-coloring.",
+        args_model=BkPredicateArgs,
+    )
+    reg.register(
+        "bk_search",
+        et.bk_search,
+        "Principled Rabern-style BK candidate search: enumerate connected "
+        "deg∈{3,4} graphs up to n_max, filter bad-K₂ / K4-free / k-colorable, "
+        "test choice-criticality. NOT a Δ≥9 chromatic-tight search — see tool "
+        "output LIMITS. Prefer this over inventing graph6 strings.",
+        args_model=BkSearchArgs,
     )
     if repl is not None:
         from . import bridge as br

@@ -287,14 +287,19 @@ def render_event(event: object, spinner: Spinner) -> None:
 
 
 def _render_final(text: str) -> None:
-    """Established / Commentary as labeled blocks (no heavy boxes)."""
-    established, commentary = _split_zones(text)
+    """Established / References / Commentary as labeled blocks (no heavy boxes)."""
+    established, references, commentary = _split_zones(text)
     console.print()
     if established is not None:
         console.print(Text("Established", style="kg.dim"))
         for line in (established.strip() or "(nothing established)").splitlines():
             console.print(Text(f"  {line}" if line else "", style="kg.dim"))
         console.print()
+        if references is not None and references.strip():
+            console.print(Text("References", style="kg.dim"))
+            for line in references.strip().splitlines():
+                console.print(Text(f"  {line}" if line else "", style="kg.dim"))
+            console.print()
         body = (commentary or "").strip()
         if body:
             console.print(Text("Commentary", style="kg.dim"))
@@ -304,18 +309,25 @@ def _render_final(text: str) -> None:
     console.print()
 
 
-def _split_zones(text: str) -> tuple[str | None, str | None]:
+def _split_zones(text: str) -> tuple[str | None, str | None, str | None]:
     marker_e = "Established (ledger):"
+    marker_r = "References (corpus):"
     marker_c = "Commentary:"
     if marker_e not in text or marker_c not in text:
-        return None, None
+        return None, None, None
     i = text.find(marker_e)
     j = text.find(marker_c)
     if i < 0 or j < 0 or j < i:
-        return None, None
+        return None, None, None
+    r = text.find(marker_r)
+    if r >= 0 and i < r < j:
+        established = text[i + len(marker_e) : r]
+        references = text[r + len(marker_r) : j]
+        commentary = text[j + len(marker_c) :]
+        return established, references, commentary
     established = text[i + len(marker_e) : j]
     commentary = text[j + len(marker_c) :]
-    return established, commentary
+    return established, None, commentary
 
 
 def render_ledger(claims: list[Claim] | tuple[Claim, ...] | str) -> None:

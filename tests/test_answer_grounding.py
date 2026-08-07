@@ -125,11 +125,35 @@ def test_grounding_system_prompt_states_hard_rules():
     assert "not established" in GROUNDING_SYSTEM_PROMPT
     assert "Never exhibit a certificate" in GROUNDING_SYSTEM_PROMPT
     assert "commentary prose only" in GROUNDING_SYSTEM_PROMPT
-    assert "Do not restate established results or print a ledger" in GROUNDING_SYSTEM_PROMPT
+    assert "Do not restate established results" in GROUNDING_SYSTEM_PROMPT
     assert 'bare "/ledger"' in GROUNDING_SYSTEM_PROMPT
     assert "Ambiguity resolution" in GROUNDING_SYSTEM_PROMPT
     assert "Never silently pick one interpretation" in GROUNDING_SYSTEM_PROMPT
     assert "exactly one clarifying question" in GROUNDING_SYSTEM_PROMPT
+    assert "anti-flailing" in GROUNDING_SYSTEM_PROMPT or "Open problems" in GROUNDING_SYSTEM_PROMPT
+    assert "bk_search" in GROUNDING_SYSTEM_PROMPT
+    assert "bk_predicate" in GROUNDING_SYSTEM_PROMPT
+    assert "literature_search" in GROUNDING_SYSTEM_PROMPT
+    assert "stated only" in GROUNDING_SYSTEM_PROMPT
+    assert "Never present a catalogued item as established" in GROUNDING_SYSTEM_PROMPT
+
+
+def test_format_grounded_answer_references_zone():
+    hits = [
+        {
+            "name": "RabernBook_FirstListBound",
+            "citation": "x",
+            "area": "coloring",
+            "lean_name": "Konigsberg.Literature.Coloring.RabernBook_FirstListBound.firstListBound",
+            "status": "stated",
+            "provenance": "verified_at=abc",
+        }
+    ]
+    text = format_grounded_answer(commentary="note", claims=(), references=hits)
+    assert "References (corpus):" in text
+    assert "stated only — not yet proven" in text
+    # stated must not look proved
+    assert "formalized (in-tree)" not in text.split("References (corpus):")[1].split("Commentary:")[0]
 
 
 def test_commentary_prose_only_strips_shadow_established_and_ledger():

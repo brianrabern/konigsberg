@@ -65,6 +65,22 @@ def test_tool_specs_omit_code_only_tools_and_include_schema():
         "graph6",
         "k",
     }
+    assert specs["max_degree"]["input_schema"]["properties"].keys() >= {"graph6"}
+    assert specs["clique_number"]["input_schema"]["properties"].keys() >= {"graph6"}
+    assert specs["chromatic_number"]["input_schema"]["properties"].keys() >= {"graph6"}
+    assert specs["bk_predicate"]["input_schema"]["properties"].keys() >= {"graph6"}
+    assert specs["bk_search"]["input_schema"]["properties"].keys() >= {
+        "n_max",
+        "k",
+        "n_min",
+        "palette",
+        "max_hits",
+    }
+    assert specs["literature_search"]["input_schema"]["properties"].keys() >= {
+        "query",
+        "area",
+        "status",
+    }
 
 
 def test_tool_specs_with_repl_include_verify_coloring():
@@ -84,22 +100,34 @@ def test_tool_specs_with_repl_include_verify_coloring():
 def test_lean_free_registry_has_only_empirical_tools():
     reg = build_registry()
     assert set(reg.names()) == {
+        "literature_search",
         "counterexample_search",
         "choosability_refute",
         "alon_tarsi",
         "fixer_breaker",
         "decide_colorable",
+        "max_degree",
+        "clique_number",
+        "chromatic_number",
+        "bk_predicate",
+        "bk_search",
     }
 
 
 def test_registry_with_repl_adds_formal_tools():
     reg = build_registry(StubREPL(GoalState(goals=[], errors=[], infos=[])))
     assert set(reg.names()) == {
+        "literature_search",
         "counterexample_search",
         "choosability_refute",
         "alon_tarsi",
         "fixer_breaker",
         "decide_colorable",
+        "max_degree",
+        "clique_number",
+        "chromatic_number",
+        "bk_predicate",
+        "bk_search",
         "lean_check",
         "lean_typecheck_statement",
         "lean_search",

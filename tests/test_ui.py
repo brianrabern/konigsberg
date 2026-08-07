@@ -24,9 +24,25 @@ def test_split_zones_parses_grounded_answer():
         "Commentary:\n"
         "bar baz"
     )
-    est, com = _split_zones(text)
+    est, refs, com = _split_zones(text)
     assert est is not None and "foo" in est
+    assert refs is None
     assert com is not None and "bar baz" in com.strip()
+
+
+def test_split_zones_with_references():
+    text = (
+        "Established (ledger):\n"
+        "(nothing established)\n\n"
+        "References (corpus):\n"
+        "RabernBook — formalized (in-tree)\n\n"
+        "Commentary:\n"
+        "see above"
+    )
+    est, refs, com = _split_zones(text)
+    assert est is not None and "nothing established" in est
+    assert refs is not None and "RabernBook" in refs
+    assert com is not None and "see above" in com.strip()
 
 
 def test_render_event_thinking_and_tool(capsys):
