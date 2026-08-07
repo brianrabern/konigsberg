@@ -38,6 +38,13 @@ carrying an explicit **trust root**, not a point on a line. `proved` (Lean
 kernel) and `solver-certified` (empirical) bottom out in different things; the
 ledger keeps that distinction visible rather than collapsing it into an ordinal.
 
+**Konigsberg's hard trust boundary is the ledger.** Everything the model says in
+prose is commentary and must be read as such. Final answers are rendered in two
+zones — `Established (ledger)` (generated from Claims, not model text) and
+`Commentary` (unverified prose). System-prompt rules reduce the chance of
+misleading narration, but they are not a kernel-style guarantee: only Claims
+carry trust.
+
 | Human label | Trust root | Means |
 |---|---|---|
 | `proved` | Lean kernel | No `sorry`; axioms within whitelist |
@@ -63,6 +70,12 @@ lake build
 # Python tiers
 cd ..
 uv sync                     # installs empirical + harness in editable mode
+
+# Interactive session (Claude-Code-shaped REPL; ledger persists under ~/.konigsberg/sessions/)
+uv run konigsberg                    # interactive
+uv run konigsberg --task "…"         # headless one-shot
+uv run konigsberg --continue         # resume latest session
+# Real model when ANTHROPIC_API_KEY is set; scripted fake otherwise.
 
 # Trust gates (run what CI runs)
 python ci/check_no_sorry.py formal

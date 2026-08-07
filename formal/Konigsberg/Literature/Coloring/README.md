@@ -7,6 +7,12 @@ A `stated` entry (statement typechecks, proof is `sorry`) is first-class: usable
 as an explicit hypothesis, `decide`-checkable on small cases, and an open
 invitation to contribute the proof. Every entry carries a `status.toml`.
 
-Candidate anchor entries (open decision #3): Rabern list-critical / average-degree
-results and the line-graph Borodin–Kostochka result — areas where the statements
-can be gotten right first.
+## Corpus (edge-bound / list-critical line)
+
+| Entry | Status | Source |
+|---|---|---|
+| `RabernBook_FirstListBound` | formalized | *Basic Graph Coloring* |
+| `RabernBook_SecondListBound` | formalized | *Basic Graph Coloring* |
+| `Rabern_4ListCriticalEdgeBound` | stated | Research/`4ListCriticalEdgeBound` (EJC 2016) |
+| `KiersteadRabern_OreVizing` | stated | Research/`OreVizing` (arXiv:1406.7355) |
+| `CranstonRabern_ImprovedEdgeBound` | stated | Research/`ImprovedEdgeBound` (arXiv:1602.02589) |

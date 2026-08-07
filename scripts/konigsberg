@@ -1,0 +1,17 @@
+#!/usr/bin/env python3
+"""konigsberg — interactive graph-theory research REPL.
+
+Usage:
+  uv run konigsberg
+  uv run konigsberg --task "verify coloring …"
+  uv run konigsberg --continue
+  uv run konigsberg --resume <id>
+"""
+from __future__ import annotations
+
+import sys
+
+from konigsberg_harness.repl import main
+
+if __name__ == "__main__":
+    sys.exit(main())

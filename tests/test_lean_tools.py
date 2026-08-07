@@ -21,6 +21,9 @@ class StubREPL:
         self._gs = gs
         self.last: str | None = None
 
+    def ensure_preamble(self, preamble=None, *, timeout_s=None) -> None:
+        return None
+
     def send(self, snippet, *, timeout_s=None, new_env=False) -> GoalState:
         self.last = snippet
         return self._gs

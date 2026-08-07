@@ -183,6 +183,12 @@ Status meanings:
 
 **The agent must be structurally incapable of upgrading a status.** Not "instructed not to" — incapable, because the tag is attached by the tool result, not by the model.
 
+**The hard trust boundary is the ledger.** Model prose is commentary. Final answers
+are presented in two zones — `Established (ledger)` (rendered from Claims minted
+this turn) and `Commentary` (the model's free text, marked unverified). Grounding
+rules in the system prompt reduce fabricated verdicts when tools fail, but they
+do not make free-text math claims mechanically checkable. Only Claims carry trust.
+
 > The project's credibility dies permanently the first time it reports "proved" about something false. Merge-time honesty (CI) and runtime honesty (ledger) are the same guarantee enforced at two moments. Skip either and the corpus rots.
 
 ---

@@ -1,0 +1,14 @@
+[entry]
+name = "KiersteadRabern_OreVizing"
+citation = "H. Kierstead and L. Rabern, Improved lower bounds on the number of edges in list critical and online list critical graphs, arXiv:1406.7355; source github.com/landon/Research/OreVizing @ 551eea721cdcbdaf7368e7fd621986a322cb2f66"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.KiersteadRabern_OreVizing.edgeBound_listCritical"
+status = "stated"
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.KiersteadRabern_OreVizing.oreBrooks_list"
+status = "stated"
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"

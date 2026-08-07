@@ -5,12 +5,15 @@ description = "Empirical tier: enumeration, SAT/ILP, choosability solvers"
 requires-python = ">=3.11"
 dependencies = [
     # networkx is a convenience for the shared graph representation; the core
-    # canonical form is our own (see core/graph.py). Keep heavy solvers optional.
+    # canonical form is our own (see core/graph.py).
     "networkx>=3",
+    # SAT/CEGAR (choosability_refute, BK-attack) — hard runtime dep for the
+    # konigsberg product; missing pysat previously left the empirical tier silent.
+    "python-sat>=1.8",
 ]
 
 [project.optional-dependencies]
-sat = ["python-sat>=1.8"]        # optional: SAT/ILP backend (open decision #2)
+sat = ["python-sat>=1.8"]        # alias kept for older `uv sync --extra sat` docs
 sage = []                        # optional Sage backend — install separately
 
 [build-system]

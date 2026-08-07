@@ -57,6 +57,17 @@ if TYPE_CHECKING:
 # ("lake", "env", "/path/to/repl/.lake/build/bin/repl").
 DEFAULT_REPL_CMD: tuple[str, ...] = ("lake", "exe", "repl")
 
+# Interactive scratch env for lean_prove / lean_check / lean_search.
+# Same library surface as smoke_lean / check_axioms --run-lean (`import Konigsberg`),
+# plus Mathlib.Tactic (omega, rfl helpers, …) and the opens graph-theory snippets
+# expect. Do NOT `import Mathlib` wholesale — that blocks REPL startup for minutes.
+DEFAULT_SCRATCH_PREAMBLE = """\
+import Konigsberg
+import Mathlib.Tactic
+open SimpleGraph Finset Function
+open Konigsberg.Areas.Coloring
+"""
+
 # Cap stderr retained for diagnostics so a chatty/looping process can't grow the
 # buffer without bound.
 _MAX_ERR_LINES = 200
@@ -133,6 +144,7 @@ class LeanREPL:
         self._out_q: queue.Queue[str | None] = queue.Queue()
         self._err_lines: list[str] = []
         self._env: int | None = None  # id of the current live environment
+        self._preamble_loaded: bool = False
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -151,6 +163,7 @@ class LeanREPL:
         self._out_q = queue.Queue()
         self._err_lines = []
         self._env = None
+        self._preamble_loaded = False
         threading.Thread(target=self._pump_stdout, daemon=True).start()
         threading.Thread(target=self._pump_stderr, daemon=True).start()
 
@@ -182,6 +195,9 @@ class LeanREPL:
         On timeout the process is killed and LeanREPLTimeout is raised — see the
         module docstring.
         """
+        if new_env:
+            # Fresh env drops prior imports (and the scratch preamble).
+            self._preamble_loaded = False
         payload: dict = {"cmd": snippet}
         if not new_env and self._env is not None:
             payload["env"] = self._env
@@ -189,6 +205,44 @@ class LeanREPL:
         if "env" in resp:
             self._env = resp["env"]
         return _to_goal_state(resp)
+
+    def load_preamble(
+        self,
+        preamble: str | None = None,
+        *,
+        timeout_s: float | None = None,
+    ) -> GoalState:
+        """Fresh env + project preamble (Mathlib + Konigsberg + opens).
+
+        Used by the interactive REPL so lean_prove/lean_check see ℕ, SimpleGraph,
+        and Konigsberg definitions — same library surface as smoke_lean /
+        check_axioms --run-lean, plus Mathlib and the usual opens.
+        """
+        src = DEFAULT_SCRATCH_PREAMBLE if preamble is None else preamble
+        state = self.send(src, new_env=True, timeout_s=timeout_s)
+        if state.errors:
+            raise LeanREPLError(
+                "scratch preamble failed to load:\n" + "\n".join(state.errors)
+            )
+        self._preamble_loaded = True
+        return state
+
+    def ensure_preamble(
+        self,
+        preamble: str | None = None,
+        *,
+        timeout_s: float | None = None,
+    ) -> None:
+        """Load the scratch preamble unless a prior load is still live."""
+        if self._preamble_loaded and self._env is not None:
+            return
+        from . import ui as _ui
+
+        _ui.info("loading Lean scratch env (Konigsberg + Mathlib.Tactic)…")
+        self.load_preamble(
+            preamble, timeout_s=timeout_s if timeout_s is not None else 300
+        )
+        _ui.info("Lean scratch env ready")
 
     def print_axioms(self, lean_name: str, *, timeout_s: float | None = None) -> list[str]:
         """`#print axioms {lean_name}` -> parsed axiom list. Used by check_axioms.
@@ -289,9 +343,11 @@ class LeanREPL:
             except subprocess.TimeoutExpired:
                 pass
         self._env = None
+        self._preamble_loaded = False
 
 
 __all__ = [
+    "DEFAULT_SCRATCH_PREAMBLE",
     "GoalState",
     "LeanREPL",
     "LeanREPLError",

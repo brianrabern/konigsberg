@@ -37,11 +37,13 @@ def is_available() -> bool:
     return True
 
 
-def _solve(n: int, allowed: list[set[int]], edges: frozenset[tuple[int, int]]) -> bool:
-    """Return True iff a proper coloring exists with color(v) in allowed[v]."""
+def _solve(
+    n: int, allowed: list[set[int]], edges: frozenset[tuple[int, int]]
+) -> list[int] | None:
+    """Return a proper coloring (color per vertex) or None if unsatisfiable."""
     # A vertex with no available color makes the instance immediately unsatisfiable.
     if any(len(allowed[v]) == 0 for v in range(n)):
-        return False
+        return None
 
     from pysat.formula import IDPool
     from pysat.solvers import Minisat22
@@ -59,22 +61,36 @@ def _solve(n: int, allowed: list[set[int]], edges: frozenset[tuple[int, int]]) -
             cnf.append([-var(u, c), -var(w, c)])
 
     with Minisat22(bootstrap_with=cnf) as solver:
-        return solver.solve()
+        if not solver.solve():
+            return None
+        model = set(solver.get_model() or [])
+        coloring: list[int] = []
+        for v in range(n):
+            chosen = next((c for c in allowed[v] if var(v, c) in model), None)
+            if chosen is None:
+                return None
+            coloring.append(chosen)
+        return coloring
+
+
+def sat_find_k_coloring(graph: Graph, k: int) -> list[int] | None:
+    """SAT-search for a proper k-coloring; None if not k-colorable. Complete."""
+    if k <= 0:
+        return [] if graph.n == 0 else None
+    palette = set(range(k))
+    return _solve(graph.n, [set(palette) for _ in range(graph.n)], graph.edges)
 
 
 def sat_k_colorable(graph: Graph, k: int) -> bool:
     """SAT-decide ordinary proper k-colorability. Complete; scales past brute force."""
-    if k <= 0:
-        return graph.n == 0
-    palette = set(range(k))
-    return _solve(graph.n, [set(palette) for _ in range(graph.n)], graph.edges)
+    return sat_find_k_coloring(graph, k) is not None
 
 
 def sat_L_colorable(graph: Graph, lists: Sequence[set[int]]) -> bool:
     """SAT-decide colorability for a GIVEN list assignment (one choosability instance)."""
     if len(lists) != graph.n:
         raise ValueError(f"expected {graph.n} lists, got {len(lists)}")
-    return _solve(graph.n, [set(x) for x in lists], graph.edges)
+    return _solve(graph.n, [set(x) for x in lists], graph.edges) is not None
 
 
 # Backwards-compatible alias for the original stub name.

@@ -36,6 +36,10 @@ def choosability_refute(graph6: str, k: int = 3, palette: int | None = None) -> 
     On a miss, mints a python-checked Claim ("no bad list up to the palette");
     with the default palette k*n this is a complete decision (=> k-choosable).
     """
+    from .errors import ToolUnavailable
+
+    if not _ch.is_available():
+        raise ToolUnavailable("choosability_refute", "pysat not installed")
     graph = parse_graph6(graph6)
     bad = _ch.find_bad_list(graph, k, palette=palette)
     if bad is not None:
@@ -92,4 +96,57 @@ def fixer_breaker(graph6: str, list_sizes: list[int]) -> Claim:
         f"{graph6}: fixer-breaker {'fixer wins' if result else 'breaker wins'} "
         f"(list sizes {list_sizes})",
         tool="fixer_breaker",
+    )
+
+
+def decide_colorable(graph6: str, k: int) -> Claim:
+    """Decide ordinary proper k-colorability of a graph6 string.
+
+    Colorable: return a witness coloring (re-checked) → certificate-checked Claim.
+    The agent can pass that witness to `verify_coloring` to upgrade to proved.
+    Not colorable: mint a not-k-colorable Claim — certificate-checked when a
+    standard obstruction (clique K_{k+1}, or odd cycle for k=2) is extracted and
+    re-verified; otherwise python-checked at the completeness of the SAT /
+    backtracking decision. Ordinary chromatic colorability only — not choosability.
+    """
+    from konigsberg_empirical.coloring import list_checks as lc
+    from konigsberg_empirical.search import sat
+
+    graph = parse_graph6(graph6)
+    if sat.is_available():
+        coloring = sat.sat_find_k_coloring(graph, k)
+    else:
+        coloring = lc.find_k_coloring(graph, k)
+
+    if coloring is not None:
+        if not lc.is_proper_coloring(graph, coloring, k=k):
+            raise ValueError("solver returned a non-proper coloring")
+        return mint_certificate(
+            f"{graph6} is {k}-colorable (witness coloring {list(coloring)})",
+            checker="list_checks.is_proper_coloring",
+            tool="decide_colorable",
+        )
+
+    obs = lc.find_noncolorability_obstruction(graph, k)
+    if obs is not None:
+        kind, verts = obs
+        if kind == "clique":
+            detail = f"clique K_{k + 1} on {verts}"
+            checker = "list_checks.verify_clique"
+        else:
+            detail = f"odd cycle {verts}"
+            checker = "list_checks.verify_odd_cycle"
+        return mint_certificate(
+            f"{graph6} is NOT {k}-colorable (obstruction: {detail})",
+            checker=checker,
+            tool="decide_colorable",
+        )
+
+    backend = "SAT" if sat.is_available() else "backtracking"
+    return mint_enumeration(
+        f"{graph6} is NOT {k}-colorable "
+        f"(complete {k}-colorability decision via {backend})",
+        bound=f"{backend} n={graph.n} k={k}",
+        exhaustive=True,
+        tool="decide_colorable",
     )

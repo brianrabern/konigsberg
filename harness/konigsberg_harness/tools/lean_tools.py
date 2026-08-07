@@ -40,6 +40,7 @@ def _parse_suggestions(text: str) -> list[str]:
 
 
 def lean_check(repl: LeanREPL, snippet: str) -> GoalState:
+    repl.ensure_preamble()
     return repl.send(snippet)
 
 
@@ -51,6 +52,7 @@ def lean_typecheck_statement(
     doesn't even parse/elaborate — before any proof effort is spent. Raises if the
     statement fails to elaborate; otherwise mints a `stated` Claim.
     """
+    repl.ensure_preamble(timeout_s=timeout_s)
     state = repl.send(f"example : {statement} := sorry", timeout_s=timeout_s)
     if not state.ok:
         raise ValueError(f"statement does not elaborate: {state.errors}")
@@ -59,6 +61,7 @@ def lean_typecheck_statement(
 
 def lean_prove(repl: LeanREPL, lean_name: str, snippet: str) -> Claim:
     """Elaborate a full proof; on success mint a proof Claim carrying #print axioms."""
+    repl.ensure_preamble()
     state = repl.send(snippet)
     if not state.ok:
         raise ValueError(f"proof failed: {state.errors}")
@@ -79,6 +82,7 @@ def lean_search(
     """
     if tactic not in _SEARCH_TACTICS:
         raise ValueError(f"tactic must be one of {_SEARCH_TACTICS}, got {tactic!r}")
+    repl.ensure_preamble(timeout_s=timeout_s)
     state = repl.send(f"example : {goal} := by {tactic}", timeout_s=timeout_s)
     return _parse_suggestions("\n".join([*state.infos, *state.errors]))
 

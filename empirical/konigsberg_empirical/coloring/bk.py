@@ -64,8 +64,13 @@ def has_k4(graph: Graph) -> bool:
 def is_choice_critical(
     graph: Graph, k: int = 3, *, palette: int | None = None
 ) -> bool:
-    """True iff G is edge-choice-critical for k: G is NOT k-choosable, yet every
-    single-edge deletion G-e IS k-choosable.
+    """True iff G is edge-minimal among graphs that fail to be k-choosable:
+    G is NOT k-choosable, yet every single-edge deletion G-e IS k-choosable.
+
+    Indexing note: Cranston–Rabern call a graph *m*-list-critical when it is not
+    (m-1)-choosable but every proper subgraph is. This predicate with parameter
+    `k` is the edge form of *(k+1)*-list-critical (e.g. k=3 ↔ 4-list-critical).
+    The Lean `KListCritical m` / `EdgeKListCritical m` use the literature index.
 
     Both directions rest on find_bad_list, so a True verdict at the default
     palette (k*n) is a complete decision; at a smaller palette it inherits the

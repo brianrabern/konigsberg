@@ -67,6 +67,124 @@ def is_k_colorable(graph: Graph, k: int) -> bool:
     return is_L_colorable(graph, [set(range(k)) for _ in range(graph.n)])
 
 
+def find_k_coloring(graph: Graph, k: int) -> list[int] | None:
+    """Return a proper k-coloring as a list indexed by vertex, or None."""
+    if k <= 0:
+        return [] if graph.n == 0 else None
+    found = find_list_coloring(graph, [set(range(k)) for _ in range(graph.n)])
+    if found is None:
+        return None
+    return [found[v] for v in range(graph.n)]
+
+
+def is_proper_coloring(graph: Graph, coloring: Sequence[int], *, k: int | None = None) -> bool:
+    """True iff `coloring` is a proper vertex coloring (optionally using colors in 0..k-1)."""
+    if len(coloring) != graph.n:
+        return False
+    if k is not None and any(c < 0 or c >= k for c in coloring):
+        return False
+    return all(coloring[u] != coloring[v] for u, v in graph.edges)
+
+
+def find_clique(graph: Graph, size: int) -> list[int] | None:
+    """Return `size` pairwise-adjacent vertices, or None. Exhaustive; small n only."""
+    if size <= 0:
+        return []
+    if size == 1:
+        return [0] if graph.n else None
+    for verts in combinations(range(graph.n), size):
+        if all(tuple(sorted((a, b))) in graph.edges for a, b in combinations(verts, 2)):
+            return list(verts)
+    return None
+
+
+def verify_clique(graph: Graph, verts: Sequence[int]) -> bool:
+    """Independent check that `verts` induce a clique."""
+    vs = list(verts)
+    return all(
+        i == j or tuple(sorted((vs[i], vs[j]))) in graph.edges
+        for i in range(len(vs))
+        for j in range(len(vs))
+    )
+
+
+def find_odd_cycle(graph: Graph) -> list[int] | None:
+    """Return an odd cycle (vertex list) if G is not bipartite, else None."""
+    color = [-1] * graph.n
+    parent: dict[int, int] = {}
+    for start in range(graph.n):
+        if color[start] >= 0:
+            continue
+        color[start] = 0
+        stack = [start]
+        while stack:
+            u = stack.pop()
+            for v in graph.neighbors(u):
+                if color[v] < 0:
+                    color[v] = 1 - color[u]
+                    parent[v] = u
+                    stack.append(v)
+                elif color[v] == color[u] and parent.get(u) != v:
+                    cycle = _odd_cycle_through(u, v, parent)
+                    if cycle is not None and verify_odd_cycle(graph, cycle):
+                        return cycle
+    return None
+
+
+def _odd_cycle_through(u: int, v: int, parent: dict[int, int]) -> list[int] | None:
+    """Reconstruct the fundamental cycle of tree-edge conflict (u, v)."""
+
+    def ancestors(x: int) -> list[int]:
+        chain = [x]
+        while x in parent:
+            x = parent[x]
+            chain.append(x)
+        return chain
+
+    pu, pv = ancestors(u), ancestors(v)
+    sv = set(pv)
+    i = 0
+    while i < len(pu) and pu[i] not in sv:
+        i += 1
+    if i >= len(pu):
+        return None
+    lca = pu[i]
+    j = pv.index(lca)
+    cycle = pu[: i + 1] + list(reversed(pv[:j]))
+    return cycle if len(cycle) % 2 == 1 and len(cycle) >= 3 else None
+
+
+def verify_odd_cycle(graph: Graph, cycle: Sequence[int]) -> bool:
+    """Independent check: simple odd cycle with all consecutive edges (incl. close)."""
+    n = len(cycle)
+    if n < 3 or n % 2 == 0 or len(set(cycle)) != n:
+        return False
+    for i in range(n):
+        a, b = cycle[i], cycle[(i + 1) % n]
+        if tuple(sorted((a, b))) not in graph.edges:
+            return False
+    return True
+
+
+def find_noncolorability_obstruction(
+    graph: Graph, k: int
+) -> tuple[str, list[int]] | None:
+    """Re-checkable witness that G is not k-colorable, if a standard obstruction is found.
+
+    Returns (kind, verts) where kind is \"clique\" (K_{k+1}) or \"odd_cycle\" (k=2 only).
+    """
+    if k < 0:
+        return None
+    clique = find_clique(graph, k + 1)
+    if clique is not None and verify_clique(graph, clique):
+        return ("clique", clique)
+    if k == 2:
+        cycle = find_odd_cycle(graph)
+        if cycle is not None and verify_odd_cycle(graph, cycle):
+            return ("odd_cycle", cycle)
+    return None
+
+
 def chromatic_number(graph: Graph) -> int:
     """Smallest k with a proper k-coloring."""
     if graph.n == 0:

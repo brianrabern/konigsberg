@@ -23,6 +23,7 @@ dev = [
     "pytest>=8",
     "ruff>=0.6",
     "mypy>=1.11",
+    "anthropic>=0.120.2",
 ]
 
 [tool.ruff]

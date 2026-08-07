@@ -1,0 +1,14 @@
+[entry]
+name = "CranstonRabern_ImprovedEdgeBound"
+citation = "D. Cranston and L. Rabern, Edge lower bounds for list critical graphs, via discharging, arXiv:1602.02589; source github.com/landon/Research/ImprovedEdgeBound @ 551eea721cdcbdaf7368e7fd621986a322cb2f66"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.mainCor"
+status = "stated"
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.minorCor"
+status = "stated"
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"

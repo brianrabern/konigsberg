@@ -21,7 +21,7 @@ Trust, made precise:
     nothing is missed) — a genuine decision. A smaller palette is a faster,
     weaker bound: sound for refutations, not for the None verdict.
 
-python-sat is the optional `sat` extra; imported lazily.
+python-sat is a hard runtime dependency of konigsberg-empirical (CEGAR / SAT).
 """
 from __future__ import annotations
 

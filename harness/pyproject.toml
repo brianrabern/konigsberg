@@ -6,10 +6,15 @@ requires-python = ">=3.11"
 dependencies = [
     "konigsberg-empirical",
     "tomli-w>=1.0",              # write status.toml back; tomllib (read) is stdlib
+    "pydantic>=2",               # tool arg schemas + validate-then-dispatch
+    "rich>=13",                  # Claude-Code-shaped REPL chrome (spinner, colors)
 ]
 
 [project.optional-dependencies]
 providers = ["anthropic>=0.40"] # model routing (open decision #5)
+
+[project.scripts]
+konigsberg = "konigsberg_harness.repl:main"
 
 [build-system]
 requires = ["hatchling"]

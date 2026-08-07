@@ -47,6 +47,36 @@ def test_k_colorable_complete_graph():
     assert is_k_colorable(complete(4), 4) is True
 
 
+def test_find_k_coloring_and_proper_check():
+    from konigsberg_empirical.coloring.list_checks import (
+        find_k_coloring,
+        is_proper_coloring,
+    )
+
+    colors = find_k_coloring(complete(3), 3)
+    assert colors is not None
+    assert is_proper_coloring(complete(3), colors, k=3)
+    assert find_k_coloring(complete(3), 2) is None
+
+
+def test_noncolorability_obstruction_triangle():
+    from konigsberg_empirical.coloring.list_checks import (
+        find_noncolorability_obstruction,
+        verify_clique,
+        verify_odd_cycle,
+    )
+
+    obs = find_noncolorability_obstruction(complete(3), 2)
+    assert obs is not None
+    kind, verts = obs
+    assert kind == "clique"
+    assert verify_clique(complete(3), verts)
+    odd = find_noncolorability_obstruction(cycle(5), 2)
+    assert odd is not None
+    assert odd[0] == "odd_cycle"
+    assert verify_odd_cycle(cycle(5), odd[1])
+
+
 def test_chromatic_number_textbook_values():
     assert chromatic_number(complete(4)) == 4
     assert chromatic_number(cycle(4)) == 2  # even cycle

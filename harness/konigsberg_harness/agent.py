@@ -3,28 +3,33 @@
 Deliberately a simple while-loop over a rich tool registry. No orchestration
 graphs, no multi-agent architecture in v1 (add only when measurably justified).
 
-The loop proposes tool calls; tools mint ledger Claims. The model can be as
-creative and unreliable as it likes because acceptance is mechanical: a Claim's
-trust root is stamped by the tool that produced it, never chosen by the model. A
-model that merely *asserts* "I proved it" in a `final` message mints nothing —
-only a tool result becomes a Claim.
+The loop closes on *context assembly*: each ``step`` rebuilds the model context
+from ``session.history`` + tool schemas, calls ``model.respond``, and yields
+events as they happen so a REPL can render/steer live.
 
-Action protocol — the model emits ONE JSON object per turn:
-
-    {"tool": "<name>", "args": {...}}   # dispatch a registered tool
-    {"final": "<answer>"}               # stop
-
-Tool arguments must be JSON (strings/numbers/lists/dicts). Tools whose arguments
-are not serializable (e.g. counterexample_search's Python predicate) are called
-directly in code, not exposed to the model — see tools.registry.build_registry.
+Trust invariant: only a tool-minted ``Claim`` enters the ledger; an
+``AssistantFinal`` mints nothing. Final answers are rendered in Established
+(ledger) vs Commentary (model prose) zones — see ``grounding``.
 """
 from __future__ import annotations
 
-import json
+from collections.abc import Iterator
 from dataclasses import dataclass, field
 
+from pydantic import ValidationError
+
+from .grounding import format_grounded_answer
 from .ledger import Claim, Ledger
-from .models import Model, Tier
+from .models import (
+    AssistantText,
+    Model,
+    Tier,
+    ToolCall,
+    ToolResultMsg,
+    UserMsg,
+)
+from .session import Session, SessionStore
+from .tools.errors import ToolUnavailable
 from .tools.registry import ToolRegistry
 
 
@@ -35,11 +40,12 @@ class AgentConfig:
 
 @dataclass
 class Observation:
-    """One loop turn: the action taken and the resulting observation text."""
+    """One tool observation (headless transcript compatibility)."""
 
     action: object
     result: str
     is_error: bool = False
+    unavailable: bool = False
 
 
 @dataclass
@@ -48,24 +54,61 @@ class AgentResult:
     ledger: Ledger
     steps: int
     transcript: list[Observation] = field(default_factory=list)
+    session: Session | None = None
+    commentary: str | None = None
 
 
-def _parse_action(text: str) -> dict:
-    """Parse the model's turn into an action dict. Tolerates ``` code fences."""
-    s = text.strip()
-    if s.startswith("```"):
-        s = s.strip("`").strip()
-        if s.lower().startswith("json"):
-            s = s[4:].strip()
-    try:
-        obj = json.loads(s)
-    except json.JSONDecodeError as e:
-        raise ValueError(f"not valid JSON: {e}") from e
-    if not isinstance(obj, dict):
-        # ValueError (not TypeError) on purpose: the loop treats every malformed
-        # action the same way, via one `except ValueError`.
-        raise ValueError("action must be a JSON object")  # noqa: TRY004
-    return obj
+# --- Live events (REPL renders these) -------------------------------------
+
+
+@dataclass(frozen=True)
+class ModelThinking:
+    """Emitted immediately before a model.respond call so the REPL can spin."""
+
+    message: str = "Thinking…"
+
+
+@dataclass(frozen=True)
+class ToolCallProposed:
+    call: ToolCall
+
+
+@dataclass(frozen=True)
+class ToolResult:
+    call: ToolCall
+    content: str
+    is_error: bool = False
+    unavailable: bool = False
+
+
+@dataclass(frozen=True)
+class ClaimMinted:
+    claim: Claim
+
+
+@dataclass(frozen=True)
+class AssistantFinal:
+    """Final answer: ``text`` is the two-zone render; ``commentary`` is raw prose."""
+
+    text: str
+    commentary: str
+    claims: tuple[Claim, ...] = ()
+    failures: tuple[str, ...] = ()
+
+
+@dataclass(frozen=True)
+class Interrupted:
+    """Emitted when ``request_interrupt`` was set; session left consistent."""
+
+
+AgentEvent = (
+    ModelThinking
+    | ToolCallProposed
+    | ToolResult
+    | ClaimMinted
+    | AssistantFinal
+    | Interrupted
+)
 
 
 def _render_result(result: object) -> str:
@@ -74,20 +117,13 @@ def _render_result(result: object) -> str:
     return str(result)
 
 
-def _render_prompt(task: str, tools: list[dict[str, str]], transcript: list[Observation]) -> str:
-    lines = [f"TASK: {task}", "", "TOOLS:"]
-    lines += [f"- {t['name']}: {t['doc']}" for t in tools]
-    lines += [
-        "",
-        (
-            'Respond with ONE JSON object: {"tool": name, "args": {...}} to act, '
-            'or {"final": answer} to finish.'
-        ),
-    ]
-    if transcript:
-        lines += ["", "HISTORY:"]
-        lines += [f"* {o.action} -> {o.result}" for o in transcript]
-    return "\n".join(lines)
+def _seed_user_message(task: str) -> UserMsg:
+    return UserMsg(
+        f"{task}\n\n"
+        "Use the available tools to make progress. When finished, reply with a "
+        "short plain-text summary (no tool call). Mathematical verdicts must be "
+        "backed by ledger Claims from tools; if a tool fails, report not established."
+    )
 
 
 class Agent:
@@ -96,48 +132,213 @@ class Agent:
     ) -> None:
         self.registry = registry
         self.model = model
-        self.ledger = Ledger()
+        self.ledger = Ledger()  # last-run mirror for callers that still read it
         self.config = config or AgentConfig()
+        self._interrupt = False
+        self._rounds = 0
 
-    def run(self, task: str) -> AgentResult:
-        transcript: list[Observation] = []
-        final: str | None = None
-        steps = 0
+    def request_interrupt(self) -> None:
+        """Ask ``step`` to halt at the next event boundary (Ctrl-C path)."""
+        self._interrupt = True
+
+    def clear_interrupt(self) -> None:
+        self._interrupt = False
+
+    def _persist_item(
+        self, session: Session, item: object, store: SessionStore | None
+    ) -> None:
+        if store is not None:
+            store.log_history_item(session, item)  # type: ignore[arg-type]
+        else:
+            session.history.append(item)  # type: ignore[arg-type]
+            session.touch()
+
+    def _persist_claim(
+        self, session: Session, claim: Claim, store: SessionStore | None
+    ) -> None:
+        if store is not None:
+            store.log_claim(session, claim)
+        else:
+            session.ledger.record(claim)
+            session.touch()
+
+    def step(
+        self,
+        session: Session,
+        *,
+        store: SessionStore | None = None,
+        tier: Tier = Tier.FRONTIER,
+    ) -> Iterator[AgentEvent]:
+        """Drive until AssistantFinal, interrupt, or max_steps.
+
+        Re-assembles context from ``session.history`` each model call. Yields
+        events as tool calls/results/claims happen so the REPL can render live.
+
+        # Mid-tool-call injection (Claude Code async dual-buffer) deferred — v1
+        # steering is interrupt-at-event-boundary + turn-boundary user messages.
+        """
+        self.clear_interrupt()
+        self._rounds = 0
+        tools = self.registry.tool_specs()
+        turn_claims: list[Claim] = []
+        turn_failures: list[str] = []
 
         for _ in range(self.config.max_steps):
-            steps += 1
-            prompt = _render_prompt(task, self.registry.spec(), transcript)
-            raw = self.model.complete(prompt, tier=Tier.FRONTIER)
+            if self._interrupt:
+                yield Interrupted()
+                return
 
-            try:
-                action = _parse_action(raw)
-            except ValueError as e:
-                transcript.append(Observation(raw, f"ERROR unparseable action: {e}", is_error=True))
-                continue
+            self._rounds += 1
+            yield ModelThinking("Thinking…")
+            turn = self.model.respond(session.history, tools, tier=tier)
 
-            if "final" in action:
-                final = action["final"]
+            if isinstance(turn, AssistantText):
+                self._persist_item(session, turn, store)
+                grounded = format_grounded_answer(
+                    commentary=turn.text,
+                    claims=turn_claims,
+                    failures=turn_failures,
+                )
+                yield AssistantFinal(
+                    text=grounded,
+                    commentary=turn.text,
+                    claims=tuple(turn_claims),
+                    failures=tuple(turn_failures),
+                )
+                return
+
+            # Record the whole assistant tool-use turn first (API requires matching
+            # tool_results before the next respond).
+            unanswered = list(turn)
+            for call in turn:
+                self._persist_item(session, call, store)
+                yield ToolCallProposed(call)
+                if self._interrupt:
+                    for rest in unanswered:
+                        tr = ToolResultMsg(
+                            id=rest.id,
+                            content="ERROR Interrupted",
+                            is_error=True,
+                        )
+                        self._persist_item(session, tr, store)
+                        yield ToolResult(call=rest, content=tr.content, is_error=True)
+                    yield Interrupted()
+                    return
+
+            for call in turn:
+                unanswered = [c for c in unanswered if c.id != call.id]
+                try:
+                    result = self.registry.dispatch(call.name, call.args)
+                except ToolUnavailable as e:
+                    banner = e.banner()
+                    turn_failures.append(e.tool)
+                    tr = ToolResultMsg(id=call.id, content=banner, is_error=True)
+                    self._persist_item(session, tr, store)
+                    yield ToolResult(
+                        call=call, content=banner, is_error=True, unavailable=True
+                    )
+                    if self._interrupt:
+                        for rest in unanswered:
+                            tr = ToolResultMsg(
+                                id=rest.id,
+                                content="ERROR Interrupted",
+                                is_error=True,
+                            )
+                            self._persist_item(session, tr, store)
+                            yield ToolResult(call=rest, content=tr.content, is_error=True)
+                        yield Interrupted()
+                        return
+                    continue
+                except (ValidationError, Exception) as e:  # noqa: BLE001
+                    err = f"ERROR {type(e).__name__}: {e}"
+                    turn_failures.append(call.name)
+                    tr = ToolResultMsg(id=call.id, content=err, is_error=True)
+                    self._persist_item(session, tr, store)
+                    yield ToolResult(call=call, content=err, is_error=True)
+                    if self._interrupt:
+                        for rest in unanswered:
+                            tr = ToolResultMsg(
+                                id=rest.id,
+                                content="ERROR Interrupted",
+                                is_error=True,
+                            )
+                            self._persist_item(session, tr, store)
+                            yield ToolResult(call=rest, content=tr.content, is_error=True)
+                        yield Interrupted()
+                        return
+                    continue
+
+                if isinstance(result, Claim):
+                    self._persist_claim(session, result, store)
+                    turn_claims.append(result)
+                    rendered = result.render()
+                    tr = ToolResultMsg(id=call.id, content=rendered)
+                    self._persist_item(session, tr, store)
+                    yield ToolResult(call=call, content=rendered, is_error=False)
+                    yield ClaimMinted(result)
+                else:
+                    rendered = _render_result(result)
+                    tr = ToolResultMsg(id=call.id, content=rendered)
+                    self._persist_item(session, tr, store)
+                    yield ToolResult(call=call, content=rendered, is_error=False)
+
+                if self._interrupt:
+                    for rest in unanswered:
+                        tr = ToolResultMsg(
+                            id=rest.id,
+                            content="ERROR Interrupted",
+                            is_error=True,
+                        )
+                        self._persist_item(session, tr, store)
+                        yield ToolResult(call=rest, content=tr.content, is_error=True)
+                    yield Interrupted()
+                    return
+
+        # Hit max_steps without a final text turn.
+        return
+
+    def run(
+        self,
+        task: str,
+        *,
+        session: Session | None = None,
+        store: SessionStore | None = None,
+    ) -> AgentResult:
+        """Headless one-shot: seed a user message, drain ``step``, return result."""
+        sess = session or Session.create()
+        if store is not None and not store.path_for(sess.id).exists():
+            store.create(sess)
+        if store is not None:
+            store.log_user(sess, _seed_user_message(task).text)
+        else:
+            sess.history.append(_seed_user_message(task))
+
+        transcript: list[Observation] = []
+        final: str | None = None
+        commentary: str | None = None
+
+        for event in self.step(sess, store=store):
+            if isinstance(event, AssistantFinal):
+                final = event.text
+                commentary = event.commentary
+            elif isinstance(event, ToolResult):
+                transcript.append(
+                    Observation(
+                        event.call,
+                        event.content,
+                        is_error=event.is_error,
+                        unavailable=event.unavailable,
+                    )
+                )
+            elif isinstance(event, Interrupted):
                 break
 
-            name = action.get("tool")
-            if not name:
-                transcript.append(
-                    Observation(action, "ERROR action has neither 'tool' nor 'final'", is_error=True)
-                )
-                continue
-
-            args = action.get("args") or {}
-            try:
-                result = self.registry.dispatch(name, **args)
-            except Exception as e:  # noqa: BLE001 — any tool failure becomes an observation, not a crash
-                transcript.append(Observation(action, f"ERROR {type(e).__name__}: {e}", is_error=True))
-                continue
-
-            # ONLY a tool-minted Claim enters the ledger. Model text never does.
-            if isinstance(result, Claim):
-                self.ledger.record(result)
-                transcript.append(Observation(action, result.render()))
-            else:
-                transcript.append(Observation(action, _render_result(result)))
-
-        return AgentResult(final=final, ledger=self.ledger, steps=steps, transcript=transcript)
+        self.ledger = sess.ledger
+        return AgentResult(
+            final=final,
+            ledger=sess.ledger,
+            steps=self._rounds,
+            transcript=transcript,
+            session=sess,
+            commentary=commentary,
+        )

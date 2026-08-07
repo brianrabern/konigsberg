@@ -24,9 +24,8 @@ ci/check_no_sorry.py, ci/check_status.py. Same guarantee, two moments.
 from __future__ import annotations
 
 import datetime as _dt
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import Enum
-
 
 # Axioms Lean's `#print axioms` may report without escalating trust. Everything
 # else requires explicit, written per-case justification. `native_decide` is
@@ -58,7 +57,7 @@ class EvidenceKind(Enum):
 
 
 def _utcnow() -> str:
-    return _dt.datetime.now(_dt.timezone.utc).isoformat()
+    return _dt.datetime.now(_dt.UTC).isoformat()
 
 
 @dataclass(frozen=True)
@@ -230,15 +229,15 @@ class Ledger:
 
 __all__ = [
     "AXIOM_WHITELIST",
-    "TrustRoot",
-    "EvidenceKind",
-    "Provenance",
     "Claim",
+    "EvidenceKind",
     "Ledger",
+    "Provenance",
+    "TrustRoot",
+    "mint_certificate",
+    "mint_conjecture",
+    "mint_enumeration",
     "mint_lean_proof",
     "mint_lean_statement",
-    "mint_certificate",
     "mint_solver_result",
-    "mint_enumeration",
-    "mint_conjecture",
 ]

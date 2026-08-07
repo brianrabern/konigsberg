@@ -36,6 +36,15 @@ def test_sat_k_colorable_odd_cycle_needs_three():
     assert sat.sat_k_colorable(cycle(5), 3) is True
 
 
+def test_sat_find_k_coloring_returns_proper_witness():
+    from konigsberg_empirical.coloring.list_checks import is_proper_coloring
+
+    colors = sat.sat_find_k_coloring(complete(3), 3)
+    assert colors is not None
+    assert is_proper_coloring(complete(3), colors, k=3)
+    assert sat.sat_find_k_coloring(complete(3), 2) is None
+
+
 def test_sat_L_colorable_matches_definition():
     k3 = complete(3)
     assert sat.sat_L_colorable(k3, [{0, 1}, {1, 2}, {0, 2}]) is True

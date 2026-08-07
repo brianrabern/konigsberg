@@ -1,0 +1,14 @@
+[entry]
+name = "Rabern_4ListCriticalEdgeBound"
+citation = "Landon Rabern, A better lower bound on average degree of 4-list-critical graphs, Electron. J. Combin. (2016); source github.com/landon/Research/4ListCriticalEdgeBound @ 551eea721cdcbdaf7368e7fd621986a322cb2f66"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.averageDegree_listCritical"
+status = "stated"
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.kernelMagic"
+status = "stated"
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"

@@ -283,6 +283,7 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "anthropic" },
     { name = "mypy" },
     { name = "pytest" },
     { name = "ruff" },
@@ -296,6 +297,7 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "anthropic", specifier = ">=0.120.2" },
     { name = "mypy", specifier = ">=1.11" },
     { name = "pytest", specifier = ">=8" },
     { name = "ruff", specifier = ">=0.6" },
@@ -307,6 +309,7 @@ version = "0.0.0"
 source = { editable = "empirical" }
 dependencies = [
     { name = "networkx" },
+    { name = "python-sat" },
 ]
 
 [package.optional-dependencies]
@@ -317,6 +320,7 @@ sat = [
 [package.metadata]
 requires-dist = [
     { name = "networkx", specifier = ">=3" },
+    { name = "python-sat", specifier = ">=1.8" },
     { name = "python-sat", marker = "extra == 'sat'", specifier = ">=1.8" },
 ]
 provides-extras = ["sat", "sage"]
@@ -327,6 +331,8 @@ version = "0.0.0"
 source = { editable = "harness" }
 dependencies = [
     { name = "konigsberg-empirical" },
+    { name = "pydantic" },
+    { name = "rich" },
     { name = "tomli-w" },
 ]
 
@@ -339,6 +345,8 @@ providers = [
 requires-dist = [
     { name = "anthropic", marker = "extra == 'providers'", specifier = ">=0.40" },
     { name = "konigsberg-empirical", editable = "empirical" },
+    { name = "pydantic", specifier = ">=2" },
+    { name = "rich", specifier = ">=13" },
     { name = "tomli-w", specifier = ">=1.0" },
 ]
 provides-extras = ["providers"]
@@ -416,6 +424,27 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/0c/99/6203ce619dee940d6bfbe099ec3fe4be00a68e9d60f70abf906cf124fe66/librt-0.13.0-cp314-cp314t-win32.whl", hash = "sha256:5fdcf34f86de8fb66d7dc7589f96ba91c4aa46671200d400e6fd6f109a483f18", size = 104357, upload-time = "2026-07-08T12:26:09.828Z" },
     { url = "https://files.pythonhosted.org/packages/52/dd/843b6314087c41657c7036d7914d8f294bdf9b580aa8513ea0588c8e9a3d/librt-0.13.0-cp314-cp314t-win_amd64.whl", hash = "sha256:260c33e92263fa629b4f6d3c51967a1c2158fe6c33237aaa3ebeac586b085259", size = 126998, upload-time = "2026-07-08T12:26:10.975Z" },
     { url = "https://files.pythonhosted.org/packages/5f/5d/3dcec2884ba1b0806d1408612555c38dd5d68e90156b59f75f6e36435c3a/librt-0.13.0-cp314-cp314t-win_arm64.whl", hash = "sha256:2f281549a4c52ac7bb97997f14353f8bd0e53a34ca0dad1c905cfd0b4a58ae99", size = 110771, upload-time = "2026-07-08T12:26:12.303Z" },
+]
+
+[[package]]
+name = "markdown-it-py"
+version = "4.2.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "mdurl" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/06/ff/7841249c247aa650a76b9ee4bbaeae59370dc8bfd2f6c01f3630c35eb134/markdown_it_py-4.2.0.tar.gz", hash = "sha256:04a21681d6fbb623de53f6f364d352309d4094dd4194040a10fd51833e418d49", size = 82454, upload-time = "2026-05-07T12:08:28.36Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/81/4da04ced5a082363ecfa159c010d200ecbd959ae410c10c0264a38cac0f5/markdown_it_py-4.2.0-py3-none-any.whl", hash = "sha256:9f7ebbcd14fe59494226453aed97c1070d83f8d24b6fc3a3bcf9a38092641c4a", size = 91687, upload-time = "2026-05-07T12:08:27.182Z" },
+]
+
+[[package]]
+name = "mdurl"
+version = "0.1.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d6/54/cfe61301667036ec958cb99bd3efefba235e65cdeb9c84d24a8293ba1d90/mdurl-0.1.2.tar.gz", hash = "sha256:bb413d29f5eea38f31dd4754dd7377d4465116fb207585f97bf925588687c1ba", size = 8729, upload-time = "2022-08-14T12:40:10.846Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/b3/38/89ba8ad64ae25be8de66a6d463314cf1eb366222074cfda9ee839c56a4b4/mdurl-0.1.2-py3-none-any.whl", hash = "sha256:84008a41e51615a49fc9966191ff91509e3c40b939176e643fd50a5c2196b8f8", size = 9979, upload-time = "2022-08-14T12:40:09.779Z" },
 ]
 
 [[package]]
@@ -702,6 +731,19 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/cc/fa/37b30ebdc04413e8e8dc6a365ad920452825fb72ff6950963ced3c212691/python_sat-1.9.dev7-cp314-cp314t-manylinux_2_24_x86_64.manylinux_2_28_x86_64.whl", hash = "sha256:4e0bb3b77eebffb7b97b1dc3dbfc492d1939e9d0df55b044ce75f999b9c9b04a", size = 3997797, upload-time = "2026-07-19T15:59:29.408Z" },
     { url = "https://files.pythonhosted.org/packages/8c/f8/cfcd59adab9495bccdfbd54732daf59e8754ec8126673e79d1851bdc4fd7/python_sat-1.9.dev7-cp314-cp314t-musllinux_1_2_aarch64.whl", hash = "sha256:ddaeb0364af4abc6139192bda2a6db2f9cccf2b1bfab48676fb2ee495f2358f7", size = 4837254, upload-time = "2026-07-19T15:59:31.372Z" },
     { url = "https://files.pythonhosted.org/packages/8f/9a/fa5e21838aed3dd52de1c3d9f3bb9facffd88ad7b595a1ba16a4e0feaed7/python_sat-1.9.dev7-cp314-cp314t-musllinux_1_2_x86_64.whl", hash = "sha256:6d6f8378bfa1f90ce9f1642d31947315a7b0bbc3d83774a8695884755b86232c", size = 5002491, upload-time = "2026-07-19T15:59:33.352Z" },
+]
+
+[[package]]
+name = "rich"
+version = "15.0.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "markdown-it-py" },
+    { name = "pygments" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/c0/8f/0722ca900cc807c13a6a0c696dacf35430f72e0ec571c4275d2371fca3e9/rich-15.0.0.tar.gz", hash = "sha256:edd07a4824c6b40189fb7ac9bc4c52536e9780fbbfbddf6f1e2502c31b068c36", size = 230680, upload-time = "2026-04-12T08:24:00.75Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/82/3b/64d4899d73f91ba49a8c18a8ff3f0ea8f1c1d75481760df8c68ef5235bf5/rich-15.0.0-py3-none-any.whl", hash = "sha256:33bd4ef74232fb73fe9279a257718407f169c09b78a87ad3d296f548e27de0bb", size = 310654, upload-time = "2026-04-12T08:24:02.83Z" },
 ]
 
 [[package]]

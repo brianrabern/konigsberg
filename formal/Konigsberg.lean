@@ -3,3 +3,5 @@
 -- the area roots so `import Konigsberg` pulls the library.
 import Konigsberg.Foundations.Basic
 import Konigsberg.Areas.Coloring.Basic
+import Konigsberg.Areas.Coloring.Irreducible
+import Konigsberg.Areas.Coloring.Orientation

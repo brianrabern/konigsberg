@@ -1,0 +1,10 @@
+[entry]
+name = "RabernBook_SecondListBound"
+citation = "Landon Rabern, Basic Graph Coloring, §Coloring with prescribed list sizes"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.RabernBook_SecondListBound.secondListBound"
+status = "formalized"
+axioms = ["propext", "Classical.choice", "Quot.sound"]
+verified_at = "99329b3bcffe7464da1a2a0ac040c6e92ee9cfe9"
