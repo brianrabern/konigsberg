@@ -151,6 +151,12 @@ def all_graphs(n: int, *, constraints: dict | None = None) -> Iterator[Graph]:
     if n < 0:
         raise ValueError(f"n must be >= 0, got {n}")
     c = constraints or {}
+    # geng rejects n=0; there is exactly one empty graph.
+    if n == 0:
+        g = Graph.of(0, [])
+        if _matches(g, c):
+            yield g
+        return
     geng = _find_geng()
     if geng is not None:
         yield from _geng_graphs(geng, n, c)

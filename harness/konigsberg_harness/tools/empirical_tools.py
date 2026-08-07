@@ -357,3 +357,105 @@ def bk_search(
         exhaustive=complete,
         tool="bk_search",
     )
+
+
+def list_critical_definition(m: int) -> str:
+    """Harness-rendered Definition used: line for the Cranston–Rabern index."""
+    return (
+        f"{m}-list-critical = not {m - 1}-choosable, edge-minimal "
+        f"[Cranston–Rabern; Lean KListCritical / EdgeKListCritical]"
+    )
+
+
+def list_critical(graph6: str, m: int, palette: int | None = None) -> Claim:
+    """Decide whether G is m-list-critical (Cranston–Rabern index, baked in).
+
+    Convention (also Lean ``KListCritical`` / ``EdgeKListCritical``): G is
+    m-list-critical iff G is not (m−1)-choosable and every proper subgraph is
+    (m−1)-choosable. This tool tests the **edge-critical** form — every G−e is
+    (m−1)-choosable — the standard reduction for this critical family (so
+    "proper subgraph" here means edge-minimality, not an exhaustive subgraph
+    scan). Internally: ``is_choice_critical(G, m-1)``.
+
+    Example: ``list_critical(K₄, 4)`` tests not-3-choosable + edge-minimal.
+    Do **not** reassemble from ``choosability_refute`` with a guessed k — that
+    is how the index gets silently wrong.
+
+    Certificates: a re-checked bad (m−1)-list (certificate-checked) when G is
+    not (m−1)-choosable; each G−e (m−1)-choosability decision at the default
+    palette k·n is complete (else the palette caveat is stated). The verdict
+    as a whole inherits that caveat on the minimality side.
+    """
+    from konigsberg_empirical.coloring import bk as _bk
+    from konigsberg_empirical.coloring import choosability as ch
+
+    from .errors import ToolUnavailable
+
+    if not ch.is_available():
+        raise ToolUnavailable("list_critical", "pysat not installed")
+    if m < 2:
+        raise ValueError(f"m-list-critical requires m≥2, got m={m}")
+
+    graph = parse_graph6(graph6)
+    k = m - 1  # choosability parameter — index baked in, not guessed
+    pal = ch.complete_palette(graph, k) if palette is None else palette
+    complete = pal >= ch.complete_palette(graph, k)
+    index_note = (
+        f"index=Cranston–Rabern (m-list-critical ↔ not (m−1)-choosable + "
+        f"edge-minimal); tested via is_choice_critical(G, k={k})"
+    )
+
+    bad = ch.find_bad_list(graph, k, palette=palette)
+    if bad is None:
+        verdict = "choosable" if complete else f"no bad {k}-list up to palette {pal}"
+        return mint_enumeration(
+            f"{graph6} is NOT {m}-list-critical ({index_note}). "
+            f"Reason: G is {k}-{verdict}.",
+            bound=f"palette<={pal}",
+            exhaustive=complete,
+            tool="list_critical",
+        )
+
+    if not ch.verify_bad_list(graph, bad, k):
+        raise ValueError("CEGAR returned a non-certificate for list_critical")
+    witness = [sorted(s) for s in bad]
+
+    failing_edge = None
+    ok_edges: list[tuple[int, int]] = []
+    for e in sorted(graph.edges):
+        if ch.find_bad_list(_bk.without_edge(graph, e), k, palette=palette) is None:
+            ok_edges.append(e)
+        else:
+            failing_edge = e
+            break
+
+    if failing_edge is not None:
+        return mint_certificate(
+            f"{graph6} is NOT {m}-list-critical ({index_note}). "
+            f"Has bad {k}-list {witness} (certificate-checked) but "
+            f"G-{list(failing_edge)} is also not {k}-choosable (not edge-minimal).",
+            checker="choosability.verify_bad_list",
+            tool="list_critical",
+        )
+
+    pal_note = (
+        f"all {len(ok_edges)} edge deletions {k}-choosable at palette {pal} "
+        + ("(complete decision)" if complete else "(palette caveat — not a complete decision)")
+    )
+    stmt = (
+        f"{graph6} IS {m}-list-critical ({index_note}). "
+        f"Bad {k}-list {witness} (certificate-checked); {pal_note}; "
+        f"edges checked {ok_edges}."
+    )
+    if complete:
+        return mint_certificate(
+            stmt,
+            checker="choosability.verify_bad_list",
+            tool="list_critical",
+        )
+    return mint_enumeration(
+        stmt,
+        bound=f"palette<={pal}",
+        exhaustive=False,
+        tool="list_critical",
+    )

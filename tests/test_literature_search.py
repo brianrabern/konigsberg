@@ -23,6 +23,16 @@ def test_library_map_parses_status_and_external():
     assert "CranstonRabern_ImprovedEdgeBound" in names
     assert "KiersteadRabern_OreVizing" in names
     assert "BrooksLean" in names
+    # statements-first book ingest
+    for n in (
+        "BasicIrreducible",
+        "KernelPerfectListBound",
+        "CombinatorialNullstellensatz",
+        "EulerianOrientationsLemma",
+        "HajnalLemma",
+        "BrooksListForm",
+    ):
+        assert n in names
     # on-disk status.toml count + one EXTERNAL entry
     n_status = len(list(LIT.glob("**/status.toml")))
     assert len([e for e in catalog if e.source == "in-tree"]) == n_status
@@ -76,14 +86,41 @@ def test_stated_status_carried_verbatim_never_upgraded():
         assert "proven" not in h["status"]
 
 
+def test_statements_first_ingest_discoverable():
+    """Acceptance: kernel / Nullstellensatz / Hajnal / Brooks surface as stated."""
+    for query, expected in [
+        ("kernel", "KernelPerfectListBound"),
+        ("Nullstellensatz", "CombinatorialNullstellensatz"),
+        ("Hajnal", "HajnalLemma"),
+        ("Brooks", "BrooksListForm"),
+    ]:
+        hits = literature_search(query, root=LIT)
+        names = {h["name"] for h in hits}
+        assert expected in names, (query, names)
+        stated = [h for h in hits if h["name"] == expected]
+        assert stated
+        # BrooksListForm is stated; BrooksLean is external — don't require only stated
+        if expected != "BrooksListForm":
+            assert all(h["status"] == "stated" for h in stated)
+        else:
+            assert any(h["status"] == "stated" for h in stated)
+
+
+def test_basic_irreducible_formalized_in_corpus():
+    hits = literature_search("BasicIrreducible", root=LIT)
+    assert hits
+    assert any(h["status"] == "formalized" for h in hits)
+
+
 def test_literature_search_registered_lean_free_no_claims():
     reg = build_registry()
     assert "literature_search" in reg.names()
     hits = reg.dispatch("literature_search", {"query": "BrooksLean"})
     assert isinstance(hits, list)
     assert hits
-    assert all(h["name"] == "BrooksLean" for h in hits)
-    assert all(h["status"] == "external-verified" for h in hits)
+    assert any(h["name"] == "BrooksLean" for h in hits)
+    brooksless = [h for h in hits if h["name"] == "BrooksLean"]
+    assert all(h["status"] == "external-verified" for h in brooksless)
 
 
 def test_references_zone_not_established():

@@ -1,7 +1,10 @@
-.PHONY: gates test lint sync lean-setup lean-smoke axioms-lean
+.PHONY: gates test lint sync deps lean-setup lean-smoke axioms-lean
 
 sync:        ## install python packages (editable)
 	uv sync
+
+deps:        ## python (uv sync) + system nauty/geng when missing
+	uv run python scripts/ensure_deps.py --yes
 
 gates:       ## run the trust gates (no Lean build needed)
 	python ci/check_status.py formal

@@ -1,0 +1,9 @@
+[entry]
+name = "HajnalLemma"
+citation = "Landon Rabern, Basic Graph Coloring / gct.tex, label HajnalLemma"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.HajnalLemma.hajnalLemma"
+status = "stated"
+verified_at = "683a5e1f46ef7a2989516c79a6640cb656400157"

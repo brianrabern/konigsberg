@@ -5,3 +5,7 @@ import Konigsberg.Foundations.Basic
 import Konigsberg.Areas.Coloring.Basic
 import Konigsberg.Areas.Coloring.Irreducible
 import Konigsberg.Areas.Coloring.Orientation
+import Konigsberg.Areas.Coloring.Kernel
+import Konigsberg.Areas.Coloring.GraphPolynomial
+import Konigsberg.Areas.Coloring.CliqueCollection
+import Konigsberg.Areas.Coloring.Gallai

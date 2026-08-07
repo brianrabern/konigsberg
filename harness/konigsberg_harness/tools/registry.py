@@ -24,16 +24,25 @@ from .arg_models import (
     LeanProveArgs,
     LeanSearchArgs,
     LeanTypecheckStatementArgs,
+    ListCriticalArgs,
     LiteratureSearchArgs,
     VerifyColoringArgs,
     schema_for,
 )
+from .fundamentals_tools import CATEGORY_ORDER, category_for, register_fundamentals
 
 if TYPE_CHECKING:
     from ..lean_repl import LeanREPL
 
 # Re-export so callers/tests can catch the same class the loop catches.
-__all__ = ["Tool", "ToolRegistry", "ValidationError", "build_registry"]
+__all__ = [
+    "CATEGORY_ORDER",
+    "Tool",
+    "ToolRegistry",
+    "ValidationError",
+    "build_registry",
+    "category_for",
+]
 
 
 @dataclass
@@ -92,6 +101,14 @@ class ToolRegistry:
     def names(self) -> list[str]:
         return list(self._tools)
 
+    def grouped_tool_specs(self) -> list[tuple[str, list[dict]]]:
+        """Model-callable tools grouped by category for ``/tools`` display."""
+        buckets: dict[str, list[dict]] = {c: [] for c in CATEGORY_ORDER}
+        for spec in self.tool_specs():
+            cat = category_for(spec["name"])
+            buckets.setdefault(cat, []).append(spec)
+        return [(c, buckets[c]) for c in CATEGORY_ORDER if buckets.get(c)]
+
 
 def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
     """Populate a registry with the real tools.
@@ -109,6 +126,7 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
     from . import literature_tools as lit
 
     reg = ToolRegistry()
+    register_fundamentals(reg)
     reg.register(
         "literature_search",
         lit.literature_search,
@@ -200,6 +218,16 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "test choice-criticality. NOT a Δ≥9 chromatic-tight search — see tool "
         "output LIMITS. Prefer this over inventing graph6 strings.",
         args_model=BkSearchArgs,
+    )
+    reg.register(
+        "list_critical",
+        et.list_critical,
+        "Decide whether graph6 is m-list-critical (Cranston–Rabern index baked "
+        "in: not (m−1)-choosable + edge-minimal; Lean KListCritical/"
+        "EdgeKListCritical). Internally is_choice_critical(G, m-1). For "
+        "'is G k-list-critical' call this — do NOT reassemble from "
+        "choosability_refute with a guessed k.",
+        args_model=ListCriticalArgs,
     )
     if repl is not None:
         from . import bridge as br

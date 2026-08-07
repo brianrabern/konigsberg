@@ -1,0 +1,16 @@
+[entry]
+name = "BasicIrreducible"
+citation = "Landon Rabern, Basic Graph Coloring, §Coloring with prescribed list sizes, label BasicIrreducible"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.BasicIrreducible.basicIrreducible"
+status = "formalized"
+axioms = ["propext", "Classical.choice", "Quot.sound"]
+verified_at = "683a5e1f46ef7a2989516c79a6640cb656400157"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.BasicIrreducible.sum_le_two_mul_card_edgeFinset"
+status = "formalized"
+axioms = ["propext", "Classical.choice", "Quot.sound"]
+verified_at = "683a5e1f46ef7a2989516c79a6640cb656400157"

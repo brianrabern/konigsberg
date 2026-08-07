@@ -8,6 +8,7 @@ from __future__ import annotations
 import argparse
 import atexit
 import os
+import re
 import signal
 import sys
 from pathlib import Path
@@ -75,7 +76,7 @@ def formal_tier_label(registry: ToolRegistry) -> str:
 
 
 def _warn_missing_runtime_deps() -> None:
-    """Loud banner when SAT/CEGAR deps are absent (distinct from a tool error)."""
+    """Loud banner when SAT/CEGAR or enumeration deps are absent."""
     try:
         from konigsberg_empirical.coloring import choosability as ch
 
@@ -83,6 +84,16 @@ def _warn_missing_runtime_deps() -> None:
             ui.warn("TOOL UNAVAILABLE: choosability_refute — pysat not installed")
     except ImportError:
         ui.warn("TOOL UNAVAILABLE: choosability_refute — pysat not installed")
+    try:
+        from konigsberg_empirical.search.enumerate import _find_geng
+
+        if _find_geng() is None:
+            ui.warn(
+                "geng not on PATH — bk_search / enumeration n>7 need nauty "
+                "(run: make deps)"
+            )
+    except ImportError:
+        pass
 
 
 class ScriptedReplModel:
@@ -122,6 +133,7 @@ Slash commands:
   /help              this help
   /tools             registered model-callable tools (+ formal tier status)
   /ledger            claims + trust roots
+  /claim [n]         render claim n (1-based) verbatim from the ledger; omit n for latest
   /compact           force context compaction (ledger untouched)
   /clear             start a fresh session
   /save              flush note (sessions auto-persist)
@@ -129,6 +141,12 @@ Slash commands:
   /sessions          list session ids
   /quit              exit
 """
+
+# Display-only asks — answer from the ledger, do not call the model.
+_CLAIM_DISPLAY_RE = re.compile(
+    r"(?is)^\s*(please\s+)?(show|display|echo|print|repeat)\s+"
+    r"(me\s+)?(the\s+)?(certificate|claim|ledger\s+claim)s?\b"
+)
 
 
 class Repl:
@@ -191,10 +209,18 @@ class Repl:
             return False
         if cmd == "/tools":
             ui.info(formal_tier_label(self.registry))
-            for spec in self.registry.tool_specs():
-                props = list((spec.get("input_schema") or {}).get("properties") or {})
-                ui.console.print(f"  [kg.tool]{spec['name']}[/]  [kg.dim]args={props}[/]")
-                ui.console.print(f"    [kg.dim]{spec.get('description', '')[:120]}[/]")
+            for category, specs in self.registry.grouped_tool_specs():
+                ui.console.print(f"  [kg.accent]{category}[/]")
+                for spec in specs:
+                    props = list(
+                        (spec.get("input_schema") or {}).get("properties") or {}
+                    )
+                    ui.console.print(
+                        f"    [kg.tool]{spec['name']}[/]  [kg.dim]args={props}[/]"
+                    )
+                    ui.console.print(
+                        f"      [kg.dim]{spec.get('description', '')[:120]}[/]"
+                    )
             code_only = [
                 n
                 for n in self.registry.names()
@@ -205,6 +231,9 @@ class Repl:
             return False
         if cmd == "/ledger":
             ui.render_ledger(self.session.ledger.render())
+            return False
+        if cmd == "/claim":
+            self._render_claim(arg)
             return False
         if cmd == "/compact":
             summary = compact(
@@ -249,6 +278,38 @@ class Repl:
         ui.warn(f"unknown command {cmd!r} — try /help")
         return False
 
+    def _render_claim(self, arg: str = "") -> None:
+        """Print one ledger Claim verbatim (1-based index; default = latest)."""
+        claims = self.session.ledger.claims()
+        if not claims:
+            ui.info("ledger empty — nothing to show")
+            return
+        if arg.strip():
+            try:
+                idx = int(arg.strip())
+            except ValueError:
+                ui.warn(f"/claim expects a 1-based index, got {arg!r}")
+                return
+            if idx < 1 or idx > len(claims):
+                ui.warn(f"/claim {idx} out of range (1..{len(claims)})")
+                return
+            claim = claims[idx - 1]
+            label = f"claim {idx}/{len(claims)}"
+        else:
+            claim = claims[-1]
+            label = f"claim {len(claims)}/{len(claims)} (latest)"
+        ui.console.print()
+        ui.console.print(f"[kg.dim]{label}[/]")
+        ui.render_ledger(claim.render())
+        ui.console.print()
+
+    def _try_claim_display(self, line: str) -> bool:
+        """If the user asked to show a stored certificate, render from ledger."""
+        if not _CLAIM_DISPLAY_RE.match(line.strip()):
+            return False
+        self._render_claim("")
+        return True
+
     def loop(self) -> int:
         ui.banner(
             self.session.id,
@@ -273,6 +334,9 @@ class Repl:
             if line.startswith("/"):
                 if self.handle_slash(line):
                     return 0
+                continue
+            if self._try_claim_display(line):
+                self.store.log_user(self.session, line)
                 continue
             self.store.log_user(self.session, line)
             self.run_agent()

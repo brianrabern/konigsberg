@@ -118,6 +118,16 @@ def empirical_ready() -> bool:
         return False
 
 
+def geng_ready() -> bool:
+    """True when nauty ``geng`` / ``nauty-geng`` is on PATH (n>7 enumeration)."""
+    try:
+        from konigsberg_empirical.search.enumerate import _find_geng
+
+        return _find_geng() is not None
+    except ImportError:
+        return False
+
+
 def model_status_label() -> str:
     """Short frontier model id when live; ``offline`` when scripted / no key."""
     if not os.environ.get("ANTHROPIC_API_KEY"):
@@ -137,9 +147,10 @@ def _append_status(line: Text, *, label: str, glyph: str, value: str, style: str
 
 
 def health_line(*, lean_live: bool | None) -> Text:
-    """Live readout of the three axes. Color = status only; glyphs backup color."""
+    """Live readout of the axes. Color = status only; glyphs backup color."""
     formal_ok = bool(lean_live)
     empiric_ok = empirical_ready()
+    enum_ok = geng_ready()
     model = model_status_label()
     model_ok = model != "offline"
 
@@ -158,6 +169,14 @@ def health_line(*, lean_live: bool | None) -> Text:
         glyph="✓" if empiric_ok else "▲",
         value="ready" if empiric_ok else "degraded",
         style="kg.ok" if empiric_ok else "kg.degraded",
+    )
+    line.append(" · ", style="kg.dim")
+    _append_status(
+        line,
+        label="enum",
+        glyph="✓" if enum_ok else "▲",
+        value="geng" if enum_ok else "atlas≤7",
+        style="kg.ok" if enum_ok else "kg.degraded",
     )
     line.append(" · ", style="kg.dim")
     _append_status(
@@ -287,14 +306,19 @@ def render_event(event: object, spinner: Spinner) -> None:
 
 
 def _render_final(text: str) -> None:
-    """Established / References / Commentary as labeled blocks (no heavy boxes)."""
-    established, references, commentary = _split_zones(text)
+    """Established / Definition / References / Commentary as labeled blocks."""
+    established, definitions, references, commentary = _split_zones(text)
     console.print()
     if established is not None:
         console.print(Text("Established", style="kg.dim"))
         for line in (established.strip() or "(nothing established)").splitlines():
             console.print(Text(f"  {line}" if line else "", style="kg.dim"))
         console.print()
+        if definitions is not None and definitions.strip():
+            console.print(Text("Definition used", style="kg.dim"))
+            for line in definitions.strip().splitlines():
+                console.print(Text(f"  {line}" if line else "", style="kg.dim"))
+            console.print()
         if references is not None and references.strip():
             console.print(Text("References", style="kg.dim"))
             for line in references.strip().splitlines():
@@ -309,25 +333,42 @@ def _render_final(text: str) -> None:
     console.print()
 
 
-def _split_zones(text: str) -> tuple[str | None, str | None, str | None]:
+def _split_zones(
+    text: str,
+) -> tuple[str | None, str | None, str | None, str | None]:
+    """Parse harness zones. Zone headers must be line-initial (not inside a Claim)."""
     marker_e = "Established (ledger):"
-    marker_r = "References (corpus):"
     marker_c = "Commentary:"
     if marker_e not in text or marker_c not in text:
-        return None, None, None
+        return None, None, None, None
     i = text.find(marker_e)
     j = text.find(marker_c)
     if i < 0 or j < 0 or j < i:
-        return None, None, None
-    r = text.find(marker_r)
-    if r >= 0 and i < r < j:
-        established = text[i + len(marker_e) : r]
-        references = text[r + len(marker_r) : j]
-        commentary = text[j + len(marker_c) :]
-        return established, references, commentary
-    established = text[i + len(marker_e) : j]
+        return None, None, None, None
+
+    mid = text[i + len(marker_e) : j]
+    # Line-initial zone headers only — Claims must not embed these phrases.
+    def_m = re.search(r"(?m)^Definition used:\s*$", mid)
+    ref_m = re.search(r"(?m)^References \(corpus\):\s*$", mid)
+
+    definitions = None
+    references = None
+    if def_m and (ref_m is None or def_m.start() < ref_m.start()):
+        established = mid[: def_m.start()]
+        rest = mid[def_m.end() :]
+        ref2 = re.search(r"(?m)^References \(corpus\):\s*$", rest)
+        if ref2:
+            definitions = rest[: ref2.start()]
+            references = rest[ref2.end() :]
+        else:
+            definitions = rest
+    elif ref_m:
+        established = mid[: ref_m.start()]
+        references = mid[ref_m.end() :]
+    else:
+        established = mid
     commentary = text[j + len(marker_c) :]
-    return established, None, commentary
+    return established, definitions, references, commentary
 
 
 def render_ledger(claims: list[Claim] | tuple[Claim, ...] | str) -> None:

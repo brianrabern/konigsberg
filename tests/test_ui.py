@@ -24,8 +24,9 @@ def test_split_zones_parses_grounded_answer():
         "Commentary:\n"
         "bar baz"
     )
-    est, refs, com = _split_zones(text)
+    est, defs, refs, com = _split_zones(text)
     assert est is not None and "foo" in est
+    assert defs is None
     assert refs is None
     assert com is not None and "bar baz" in com.strip()
 
@@ -39,10 +40,27 @@ def test_split_zones_with_references():
         "Commentary:\n"
         "see above"
     )
-    est, refs, com = _split_zones(text)
+    est, defs, refs, com = _split_zones(text)
     assert est is not None and "nothing established" in est
+    assert defs is None
     assert refs is not None and "RabernBook" in refs
     assert com is not None and "see above" in com.strip()
+
+
+def test_split_zones_with_definition():
+    text = (
+        "Established (ledger):\n"
+        "[certificate-checked] C~ IS 4-list-critical\n\n"
+        "Definition used:\n"
+        "4-list-critical = not 3-choosable, edge-minimal [Cranston–Rabern]\n\n"
+        "Commentary:\n"
+        "yes"
+    )
+    est, defs, refs, com = _split_zones(text)
+    assert est is not None and "4-list-critical" in est
+    assert defs is not None and "not 3-choosable" in defs
+    assert refs is None
+    assert com is not None and "yes" in com.strip()
 
 
 def test_render_event_thinking_and_tool(capsys):
@@ -109,10 +127,12 @@ def test_health_line_colors_axes():
     plain = live.plain
     assert "formal: ✓ live" in plain
     assert "empirical:" in plain
+    assert "enum:" in plain
     assert "✓" in plain or "▲" in plain
     assert "model:" in plain
     offline = health_line(lean_live=False)
     assert "formal: ✗ off" in offline.plain
+    assert "atlas≤7" in offline.plain or "geng" in offline.plain
 
 
 def test_render_final_panels(capsys):

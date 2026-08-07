@@ -39,11 +39,22 @@ kernel) and `solver-certified` (empirical) bottom out in different things; the
 ledger keeps that distinction visible rather than collapsing it into an ordinal.
 
 **Konigsberg's hard trust boundary is the ledger.** Everything the model says in
-prose is commentary and must be read as such. Final answers are rendered in two
-zones — `Established (ledger)` (generated from Claims, not model text) and
-`Commentary` (unverified prose). System-prompt rules reduce the chance of
-misleading narration, but they are not a kernel-style guarantee: only Claims
-carry trust.
+prose is commentary and must be read as such. Final answers are rendered in
+zones — `Established (ledger)` (generated from Claims, not model text), optional
+`Definition used:` (which convention drove the verdict), optional
+`References (corpus)`, and `Commentary` (unverified prose). System-prompt rules
+reduce the chance of misleading narration, but they are not a kernel-style
+guarantee: only Claims carry trust.
+
+**Definitional fidelity is upstream of the ledger.** The ledger certifies that
+claims are *true*, not that they *answer the question asked*. If the agent
+interprets "4-list-critical" as "4-choosable" and then correctly proves
+4-choosability, the trust gates pass — they certify truth, not relevance. Tools
+that bake in an index (`list_critical`) and a visible `Definition used:` line
+remove the common failure mode and make the interpretation falsifiable, but
+they cannot fully guarantee correct interpretation. That residual gap — "did
+you prove the right theorem?" — is inherent to the trust model and should stay
+named, not hidden.
 
 | Human label | Trust root | Means |
 |---|---|---|
@@ -58,7 +69,8 @@ carry trust.
 ## Quickstart
 
 Prereqs: [`elan`](https://github.com/leanprover/elan) (Lean toolchain manager),
-Python ≥ 3.11, and [`uv`](https://docs.astral.sh/uv/).
+Python ≥ 3.11, and [`uv`](https://docs.astral.sh/uv/). On macOS, [`Homebrew`](https://brew.sh)
+is used to install nauty when missing.
 
 ```bash
 # Formal tier — M0: get mathlib, verify the environment round-trips
@@ -67,9 +79,9 @@ lake update                 # freezes the real mathlib commit into lake-manifest
 lake exe cache get          # prebuilt oleans; do NOT build mathlib from source
 lake build
 
-# Python tiers
+# Python + system deps (uv sync + nauty/geng via brew/apt when missing)
 cd ..
-uv sync                     # installs empirical + harness in editable mode
+make deps                   # or: uv run python scripts/ensure_deps.py --yes
 
 # Interactive session (Claude-Code-shaped REPL; ledger persists under ~/.konigsberg/sessions/)
 uv run konigsberg                    # interactive

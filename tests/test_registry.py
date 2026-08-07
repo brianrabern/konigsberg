@@ -5,6 +5,7 @@ Uses a stub REPL so the formal tools register and dispatch without a Lean env.
 import pytest
 from konigsberg_harness.lean_repl import GoalState
 from konigsberg_harness.ledger import TrustRoot
+from konigsberg_harness.tools.fundamentals_tools import FUNDAMENTAL_TOOL_NAMES
 from konigsberg_harness.tools.registry import ToolRegistry, build_registry
 
 
@@ -51,6 +52,8 @@ def test_tool_specs_omit_code_only_tools_and_include_schema():
     specs = {s["name"]: s for s in reg.tool_specs()}
     assert "counterexample_search" not in specs  # code-only, no args_model
     assert "choosability_refute" in specs
+    assert "make_graph" in specs
+    assert "describe_graph" in specs
     schema = specs["choosability_refute"]["input_schema"]
     props = schema.get("properties", {})
     assert "graph6" in props
@@ -81,6 +84,12 @@ def test_tool_specs_omit_code_only_tools_and_include_schema():
         "area",
         "status",
     }
+    assert specs["list_critical"]["input_schema"]["properties"].keys() >= {
+        "graph6",
+        "m",
+        "palette",
+    }
+    assert specs["make_graph"]["input_schema"]["properties"].keys() >= {"kind"}
 
 
 def test_tool_specs_with_repl_include_verify_coloring():
@@ -97,37 +106,30 @@ def test_tool_specs_with_repl_include_verify_coloring():
 
 # --- build_registry -------------------------------------------------------
 
+_CORE_EMPIRICAL = {
+    "literature_search",
+    "counterexample_search",
+    "choosability_refute",
+    "alon_tarsi",
+    "fixer_breaker",
+    "decide_colorable",
+    "max_degree",
+    "clique_number",
+    "chromatic_number",
+    "bk_predicate",
+    "bk_search",
+    "list_critical",
+} | set(FUNDAMENTAL_TOOL_NAMES)
+
+
 def test_lean_free_registry_has_only_empirical_tools():
     reg = build_registry()
-    assert set(reg.names()) == {
-        "literature_search",
-        "counterexample_search",
-        "choosability_refute",
-        "alon_tarsi",
-        "fixer_breaker",
-        "decide_colorable",
-        "max_degree",
-        "clique_number",
-        "chromatic_number",
-        "bk_predicate",
-        "bk_search",
-    }
+    assert set(reg.names()) == _CORE_EMPIRICAL
 
 
 def test_registry_with_repl_adds_formal_tools():
     reg = build_registry(StubREPL(GoalState(goals=[], errors=[], infos=[])))
-    assert set(reg.names()) == {
-        "literature_search",
-        "counterexample_search",
-        "choosability_refute",
-        "alon_tarsi",
-        "fixer_breaker",
-        "decide_colorable",
-        "max_degree",
-        "clique_number",
-        "chromatic_number",
-        "bk_predicate",
-        "bk_search",
+    assert set(reg.names()) == _CORE_EMPIRICAL | {
         "lean_check",
         "lean_typecheck_statement",
         "lean_search",

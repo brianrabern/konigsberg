@@ -95,6 +95,7 @@ class AssistantFinal:
     claims: tuple[Claim, ...] = ()
     failures: tuple[str, ...] = ()
     references: tuple[dict, ...] = ()
+    definitions: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -209,6 +210,7 @@ class Agent:
         turn_claims: list[Claim] = []
         turn_failures: list[str] = []
         turn_refs: list[dict] = []
+        turn_definitions: list[str] = []
 
         for _ in range(self.config.max_steps):
             if self._interrupt:
@@ -226,6 +228,7 @@ class Agent:
                     claims=turn_claims,
                     failures=turn_failures,
                     references=turn_refs,
+                    definitions=turn_definitions,
                 )
                 yield AssistantFinal(
                     text=grounded,
@@ -233,6 +236,7 @@ class Agent:
                     claims=tuple(turn_claims),
                     failures=tuple(turn_failures),
                     references=tuple(turn_refs),
+                    definitions=tuple(turn_definitions),
                 )
                 return
 
@@ -258,6 +262,12 @@ class Agent:
                 unanswered = [c for c in unanswered if c.id != call.id]
                 try:
                     result = self.registry.dispatch(call.name, call.args)
+                    if call.name == "list_critical":
+                        from .tools.empirical_tools import list_critical_definition
+
+                        m = call.args.get("m")
+                        if isinstance(m, int):
+                            turn_definitions.append(list_critical_definition(m))
                 except ToolUnavailable as e:
                     banner = e.banner()
                     turn_failures.append(e.tool)

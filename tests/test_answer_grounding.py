@@ -136,9 +136,30 @@ def test_grounding_system_prompt_states_hard_rules():
     assert "literature_search" in GROUNDING_SYSTEM_PROMPT
     assert "stated only" in GROUNDING_SYSTEM_PROMPT
     assert "Never present a catalogued item as established" in GROUNDING_SYSTEM_PROMPT
-
-
-def test_format_grounded_answer_references_zone():
+    assert "Definition grounding" in GROUNDING_SYSTEM_PROMPT
+    assert "list_critical" in GROUNDING_SYSTEM_PROMPT
+    assert "Never guess a parameterization" in GROUNDING_SYSTEM_PROMPT
+    assert "Do not restate or regenerate certificates" in GROUNDING_SYSTEM_PROMPT
+    assert "/claim" in GROUNDING_SYSTEM_PROMPT
+    assert "make_graph" in GROUNDING_SYSTEM_PROMPT
+    assert "describe_graph" in GROUNDING_SYSTEM_PROMPT
+    assert "never write a graph6" in GROUNDING_SYSTEM_PROMPT.lower() or (
+        "never write a graph6 string" in GROUNDING_SYSTEM_PROMPT
+    )
+    assert "Proxy inferences" in GROUNDING_SYSTEM_PROMPT
+    assert "contains_minor" in GROUNDING_SYSTEM_PROMPT
+    assert "is_subgraph is not a proxy" in GROUNDING_SYSTEM_PROMPT
+    text = format_grounded_answer(
+        commentary="yes",
+        claims=(),
+        definitions=[
+            "4-list-critical = not 3-choosable, edge-minimal [Cranston–Rabern; Lean KListCritical / EdgeKListCritical]"
+        ],
+    )
+    assert "Definition used:" in text
+    assert "not 3-choosable" in text
+    assert text.index("Established") < text.index("Definition used")
+    assert text.index("Definition used") < text.index("Commentary")
     hits = [
         {
             "name": "RabernBook_FirstListBound",
@@ -184,6 +205,19 @@ The 5-cycle separates choosability from chromatic number.
     assert "/ledger" not in prose
     assert "|" not in prose  # no table
     assert "separates choosability" in prose
+
+
+def test_commentary_prose_only_strips_bare_definition_used():
+    from konigsberg_harness.grounding import commentary_prose_only
+
+    raw = (
+        "Definition used:\n"
+        "4-list-critical = not 3-choosable, edge-minimal [Cranston–Rabern]\n\n"
+        "Yes. K₄ is 4-list-critical under that convention."
+    )
+    prose = commentary_prose_only(raw)
+    assert "Definition used" not in prose
+    assert "Yes. K₄ is 4-list-critical" in prose
 
 
 def test_format_established_empty_with_failures():

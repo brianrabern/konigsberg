@@ -55,6 +55,12 @@ class LiteratureSearchArgs(BaseModel):
     status: str | None = None
 
 
+class ListCriticalArgs(BaseModel):
+    graph6: str
+    m: int
+    palette: int | None = None
+
+
 class LeanCheckArgs(BaseModel):
     snippet: str
 
@@ -71,6 +77,98 @@ class LeanSearchArgs(BaseModel):
 class LeanProveArgs(BaseModel):
     lean_name: str
     snippet: str
+
+
+# --- Graph fundamentals ---------------------------------------------------
+
+
+class MakeGraphArgs(BaseModel):
+    """Named family or explicit construction. Prefer this over inventing graph6."""
+
+    kind: str
+    n: int | None = None
+    m: int | None = None
+    r: int | None = None
+    d: int | None = None
+    parts: list[int] | None = None
+    edges: list[list[int]] | None = None
+    graph6: str | None = None
+
+
+class Graph6EncodeArgs(BaseModel):
+    n: int
+    edges: list[list[int]]
+
+
+class VerticesArgs(BaseModel):
+    graph6: str
+    vertices: list[int]
+
+
+class VertexArgs(BaseModel):
+    graph6: str
+    v: int
+
+
+class EdgeUVArgs(BaseModel):
+    graph6: str
+    u: int
+    v: int
+
+
+class EdgesArgs(BaseModel):
+    graph6: str
+    edges: list[list[int]]
+
+
+class TwoGraphArgs(BaseModel):
+    graph6: str
+    other: str
+
+
+class HostPatternArgs(BaseModel):
+    host: str
+    pattern: str
+
+
+class KArgs(BaseModel):
+    graph6: str
+    k: int
+
+
+class ContainsCycleArgs(BaseModel):
+    graph6: str
+    length: int | None = None
+
+
+class ContainsPathArgs(BaseModel):
+    graph6: str
+    length: int
+
+
+class EnumerateGraphsArgs(BaseModel):
+    n: int
+    connected: bool = False
+    min_degree: int | None = None
+    regular: int | None = None
+    max_hits: int | None = None
+
+
+class RandomGraphArgs(BaseModel):
+    n: int
+    p: float
+    seed: int | None = None
+
+
+class PathEndpointsArgs(BaseModel):
+    graph6: str
+    u: int
+    v: int
+
+
+class RootArgs(BaseModel):
+    graph6: str
+    root: int
 
 
 # Empty schema placeholder for tools registered without an args model (code-only).
