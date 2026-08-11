@@ -1,19 +1,17 @@
 # CranstonRabern_ImprovedEdgeBound
 
-**Source.** D. Cranston & L. Rabern, *Edge lower bounds for list critical
-graphs, via discharging*, arXiv:1602.02589. TeX:
-[`ImprovedEdgeBound/EdgeBoundDischargingFinal.tex`](https://github.com/landon/Research/tree/master/ImprovedEdgeBound)
-@ `551eea7`. Public domain.
+## Informal statement
+Edge lower bounds for k-AT-critical graphs (MainCor k≥7; MinorCor k∈{5,6}) with cleared-denominator form.
 
-**Claims stated.**
-1. `mainCor` — `k`-AT-critical, `k ≥ 7`, `G ≠ K_k` ⇒
-   `d(G) ≥ k−1 + (k−3)(2k−5)/(k³+k²−15k+15)`.
-2. `minorCor` — same for `k ∈ {5,6}` with denominator `k³+2k²−18k+15`.
+## Source
+Cranston–Rabern, arXiv:1602.02589 / ImprovedEdgeBound TeX (public domain).
 
-**AT stub.** `IsKATCritical` is an empty typeclass pending an Alon–Tarsi number
-in Areas. The published theorems are about AT-critical graphs (which imply
-list-critical bounds via `χ ≤ χ_ℓ ≤ AT`); do not silently weaken the hypothesis
-to `KListCritical`.
+## Provenance
+Agent-drafted stated targets; `IsKATCritical` is an intentional empty stub pending AT in Areas.
 
-**Deps.** Discharging + Gallai-tree average-degree bounds; Kernel Magic /
-`mic` from the OreVizing / 4ListCritical line.
+## Fidelity review
+(See statement comments; backfilled under FIDELITY_GATES.)
+
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.

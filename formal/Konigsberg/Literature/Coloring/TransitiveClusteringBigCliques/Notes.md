@@ -1,12 +1,13 @@
 # TransitiveClusteringBigCliques
 
-## Book
-`gct.tex` `\label{TransitiveClusteringBigCliques}`: Let G be a connected
-vertex-transitive graph and 𝒬 the collection of *all* maximum cliques. If
-ω(G) ≥ (2/3)(Δ(G)+1), then either
-- X_𝒬 is edgeless; or
-- X_𝒬 is a cycle and G is the graph obtained from X_𝒬 by blowing up each
-  vertex to a K_{ω/2}.
+## Informal statement
+Connected vertex-transitive G with ω ≥ (2/3)(Δ+1): X_𝒬 edgeless, or X_𝒬≃C_n and G≃cliqueBlowup C_n (ω/2).
+
+## Source
+`\\label{TransitiveClusteringBigCliques}` (gct).
+
+## Provenance
+Agent-drafted stated target; human fidelity read restored the blow-up conclusion (not only the cycle condition).
 
 ## Fidelity review
 - Uses the full `maxCliqueCollection` (not an arbitrary subcollection) — matches
@@ -18,3 +19,7 @@ vertex-transitive graph and 𝒬 the collection of *all* maximum cliques. If
   conclusion, not a necessary-condition shadow.
 - `Even G.cliqueNum` so `ω/2` is integral (book’s ½ω).
 - Non-strict ω inequality as `3ω ≥ 2(Δ+1)`.
+
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.

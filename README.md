@@ -24,7 +24,7 @@ at every milestone is an instrument useful on its own terms.
 | `formal/` | Formal (Lean): mathlib + own library + formalized literature | core (`Foundations/`), community (`Areas/`, `Literature/`) |
 | `empirical/` | Empirical (Python): enumeration, SAT, choosability solvers | core + community |
 | `harness/` | Agent (Python): loop, tools, ledger, context surfacing | core |
-| `ci/` | Trust gates: axioms, sorry, status consistency | core |
+| `ci/` | Trust gates: axioms, sorry, imports, conventions, audit self-test | core |
 | `vendor/` | Landon Rabern's .NET oracle — TEST ORACLE ONLY, to be deleted | — |
 | `templates/` | Copyable skeletons for new areas / literature entries | — |
 
@@ -54,7 +54,10 @@ that bake in an index (`list_critical`) and a visible `Definition used:` line
 remove the common failure mode and make the interpretation falsifiable, but
 they cannot fully guarantee correct interpretation. That residual gap — "did
 you prove the right theorem?" — is inherent to the trust model and should stay
-named, not hidden.
+named, not hidden. For the formal tier the same ceiling is spelled out in
+[`docs/TRUST.md`](docs/TRUST.md): kernel + axiom gates guarantee *proofs*;
+statements get sanity checks and a best-effort read, with no warrant that they
+say what the docstring claims.
 
 | Human label | Trust root | Means |
 |---|---|---|
@@ -90,9 +93,14 @@ uv run konigsberg --continue         # resume latest session
 # Real model when ANTHROPIC_API_KEY is set; scripted fake otherwise.
 
 # Trust gates (run what CI runs)
-python ci/check_no_sorry.py formal
-python ci/check_status.py   formal
-python ci/check_axioms.py   formal
+make gates
+# equivalent:
+#   python ci/self_test_audit.py
+#   python ci/check_status.py formal
+#   python ci/check_no_sorry.py formal
+#   python ci/check_axioms.py formal
+#   python ci/check_imports.py formal
+#   python ci/check_conventions.py formal
 ```
 
 ## Status

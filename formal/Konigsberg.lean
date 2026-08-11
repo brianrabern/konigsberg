@@ -9,3 +9,6 @@ import Konigsberg.Areas.Coloring.Kernel
 import Konigsberg.Areas.Coloring.GraphPolynomial
 import Konigsberg.Areas.Coloring.CliqueCollection
 import Konigsberg.Areas.Coloring.Gallai
+import Konigsberg.Areas.Coloring.Lemmas
+import Konigsberg.Literature
+

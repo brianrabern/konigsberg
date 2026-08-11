@@ -1,17 +1,17 @@
 # RabernBook_FirstListBound
 
-Book: Landon Rabern, *Basic Graph Coloring*, §"Coloring with prescribed list sizes".
+## Informal statement
+If |L(v)| ≥ deg(v)+1 for all v, then G is L-colorable (pointwise (d+1)-choosable).
 
-**Statement.** If `|L(v)| > d(v)` for all `v` (i.e. `|L(v)| ≥ d(v)+1`), then `G`
-is `L`-colorable — equivalently `FChoosable G (fun v => G.degree v + 1)`.
+## Source
+Rabern, *Basic Graph Coloring*, §Coloring with prescribed list sizes.
 
-**Proof.** Greedy induction over a finset of already-coloured vertices. When
-adding `a`, the colours used by neighbours already in the set form a set of
-size ≤ `deg(a)`, so a list of size ≥ `deg(a)+1` still has a free colour. Same
-shape as `Konigsberg.Areas.Coloring.choosable_card`, with the card bound replaced
-by the neighbour bound (`map_neighborFinset` / `degree`).
+## Provenance
+Hand-proved in Statements.lean (greedy induction). Status `formalized`.
 
-**Why it matters.** The first corpus entry exercising the Literature loop end to
-end. Downstream edge-bound entries (`4ListCriticalEdgeBound`, etc.) rest on
-`basicIrreducible` from `Areas/Coloring/Irreducible.lean`; this entry is the
-greedy seed that appears in the same book section.
+## Fidelity review
+(See statement comments; backfilled under FIDELITY_GATES.)
+
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.

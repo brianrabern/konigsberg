@@ -1,0 +1,78 @@
+/-
+Literature barrel — pulls every Statements/Proofs/SanityChecks module so the
+root import covers the corpus (import-coverage / axiom audit reachability).
+-/
+import Konigsberg.Literature.SanityLib
+
+import Konigsberg.Literature.Coloring.BasicIrreducible.Statements
+import Konigsberg.Literature.Coloring.BasicIrreducible.Proofs
+import Konigsberg.Literature.Coloring.BasicIrreducible.SanityChecks
+
+import Konigsberg.Literature.Coloring.BrooksListForm.Statements
+import Konigsberg.Literature.Coloring.BrooksListForm.Proofs
+import Konigsberg.Literature.Coloring.BrooksListForm.SanityChecks
+
+import Konigsberg.Literature.Coloring.CombinatorialNullstellensatz.Statements
+import Konigsberg.Literature.Coloring.CombinatorialNullstellensatz.Proofs
+import Konigsberg.Literature.Coloring.CombinatorialNullstellensatz.SanityChecks
+
+import Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.Statements
+import Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.Proofs
+import Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.DeltaEdgeColoring.Statements
+import Konigsberg.Literature.Coloring.DeltaEdgeColoring.Proofs
+import Konigsberg.Literature.Coloring.DeltaEdgeColoring.SanityChecks
+
+import Konigsberg.Literature.Coloring.EulerianOrientationsLemma.Statements
+import Konigsberg.Literature.Coloring.EulerianOrientationsLemma.Proofs
+import Konigsberg.Literature.Coloring.EulerianOrientationsLemma.SanityChecks
+
+import Konigsberg.Literature.Coloring.HajnalLemma.Statements
+import Konigsberg.Literature.Coloring.HajnalLemma.Proofs
+import Konigsberg.Literature.Coloring.HajnalLemma.SanityChecks
+
+import Konigsberg.Literature.Coloring.KernelPerfectListBound.Statements
+import Konigsberg.Literature.Coloring.KernelPerfectListBound.Proofs
+import Konigsberg.Literature.Coloring.KernelPerfectListBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.KernelPerfectSuperListBound.Statements
+import Konigsberg.Literature.Coloring.KernelPerfectSuperListBound.Proofs
+import Konigsberg.Literature.Coloring.KernelPerfectSuperListBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.KiersteadRabern_OreVizing.Statements
+import Konigsberg.Literature.Coloring.KiersteadRabern_OreVizing.Proofs
+import Konigsberg.Literature.Coloring.KiersteadRabern_OreVizing.SanityChecks
+
+import Konigsberg.Literature.Coloring.KostochkaCliqueGraph.Statements
+import Konigsberg.Literature.Coloring.KostochkaCliqueGraph.Proofs
+import Konigsberg.Literature.Coloring.KostochkaCliqueGraph.SanityChecks
+
+import Konigsberg.Literature.Coloring.KostochkaYanceyKernelLemma.Statements
+import Konigsberg.Literature.Coloring.KostochkaYanceyKernelLemma.Proofs
+import Konigsberg.Literature.Coloring.KostochkaYanceyKernelLemma.SanityChecks
+
+import Konigsberg.Literature.Coloring.RabernBook_FirstListBound.Statements
+import Konigsberg.Literature.Coloring.RabernBook_FirstListBound.Proofs
+import Konigsberg.Literature.Coloring.RabernBook_FirstListBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.RabernBook_SecondListBound.Statements
+import Konigsberg.Literature.Coloring.RabernBook_SecondListBound.Proofs
+import Konigsberg.Literature.Coloring.RabernBook_SecondListBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.Statements
+import Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.Proofs
+import Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.SchauzCoefficient.Statements
+import Konigsberg.Literature.Coloring.SchauzCoefficient.Proofs
+import Konigsberg.Literature.Coloring.SchauzCoefficient.SanityChecks
+
+import Konigsberg.Literature.Coloring.TransitiveClusteringBigCliques.Statements
+import Konigsberg.Literature.Coloring.TransitiveClusteringBigCliques.Proofs
+import Konigsberg.Literature.Coloring.TransitiveClusteringBigCliques.SanityChecks
+
+import Konigsberg.Literature.Coloring.TwoThirdsEqualityStructure.Statements
+import Konigsberg.Literature.Coloring.TwoThirdsEqualityStructure.Proofs
+import Konigsberg.Literature.Coloring.TwoThirdsEqualityStructure.SanityChecks
+

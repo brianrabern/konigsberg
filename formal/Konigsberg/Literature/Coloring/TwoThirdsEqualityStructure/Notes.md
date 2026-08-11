@@ -1,14 +1,16 @@
 # TwoThirdsEqualityStructure
 
-## Book
-`gct.tex` `\label{TwoThirdsEqualityStructure}`: If 𝒬 is a collection of
-maximum cliques in G with ω(G) ≥ (2/3)(Δ(G)+1) such that X_𝒬 is connected,
-then either
-- ∩𝒬 ≠ ∅; or
-- Δ(X_𝒬) ≤ 2 and if B, C ∈ 𝒬 are different neighbours of A ∈ 𝒬, then
-  B ∩ C = ∅ and |A ∩ B| = |A ∩ C| = ½ ω(G).
+## Informal statement
+ω ≥ (2/3)(Δ+1) and X_𝒬 connected ⇒ ⋂𝒬 ≠ ∅, or Δ(X)≤2 with the half-ω intersection geometry.
 
-## Fidelity review (line-by-line)
+## Source
+`\\label{TwoThirdsEqualityStructure}` (gct 571–578).
+
+## Provenance
+Agent-drafted stated target; human fidelity read vs gct (half-ω as 2·|A∩B|=ω).
+
+## Fidelity review
+(line-by-line)
 | Book | Lean |
 |---|---|
 | 𝒬 a collection of maximum cliques | `𝒬 ⊆ maxCliqueCollection G` (arbitrary subcollection OK) |
@@ -21,3 +23,7 @@ then either
 | \|A∩B\| = \|A∩C\| = ½ω | `2 * #(A ∩ B) = cliqueNum` (and same for C) — avoids ℕ `/` floor |
 
 Verified against gct 571–578. Medium→high confidence after this read.
+
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.

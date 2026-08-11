@@ -7,9 +7,12 @@ deps:        ## python (uv sync) + system nauty/geng when missing
 	uv run python scripts/ensure_deps.py --yes
 
 gates:       ## run the trust gates (no Lean build needed)
+	python ci/self_test_audit.py
 	python ci/check_status.py formal
 	python ci/check_no_sorry.py formal
 	python ci/check_axioms.py formal
+	python ci/check_imports.py formal
+	python ci/check_conventions.py formal
 
 test: sync   ## run python tests
 	uv run pytest

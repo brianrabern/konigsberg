@@ -1,8 +1,13 @@
 # HajnalLemma
 
-## Book
-`\label{HajnalLemma}` (gct 551–553): If G is a graph and 𝒬 is a collection of
-maximum cliques in G, then |⋃𝒬| + |⋂𝒬| ≥ 2ω(G).
+## Informal statement
+For a nonempty collection 𝒬 of maximum cliques, |⋃𝒬| + |⋂𝒬| ≥ 2ω(G).
+
+## Source
+`\\label{HajnalLemma}` (gct 551–553).
+
+## Provenance
+Agent-drafted stated target; human fidelity read caught missing Nonempty (empty ⋂ = univ). SanityChecks lock that fix.
 
 ## Fidelity review
 - Members of 𝒬 are maximum cliques via `𝒬 ⊆ maxCliqueCollection G` (book: “a
@@ -12,3 +17,7 @@ maximum cliques in G, then |⋃𝒬| + |⋂𝒬| ≥ 2ω(G).
   the claim becomes `0 + |V| ≥ 2ω`, false for `K_n`. The book’s usage (and the
   Kostochka proof’s `r ≥ 3`) assumes a nonempty collection.
 - Cardinalities via `Set.ncard` on union/intersection; RHS `2 * cliqueNum`.
+
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.

@@ -1,14 +1,18 @@
 # CombinatorialNullstellensatz
 
-## Book
-Unlabeled lemma at the start of ch. Combinatorial nullstellensatz: coefficient
-criterion for a nonzero evaluation on a grid.
+## Informal statement
+Alon's combinatorial Nullstellensatz: nonzero multi-degree coefficient + large enough grids ⇒ nonzero evaluation.
+
+## Source
+Unlabeled lemma opening the Combinatorial nullstellensatz chapter in *Basic Graph Coloring*.
+
+## Provenance
+Agent-drafted stated target shaped for the AT / graph-polynomial bridge; human fidelity read.
 
 ## Fidelity review
 Matches Alon's CN: `∑ k = deg f`, nonzero monomial coeff, `|A_i| ≥ k_i+1` ⇒
 nonzero evaluation. Field `F` arbitrary (book: arbitrary field).
 
-## Empirical bridge
-Upstream of `alon_tarsi` / `graph_polynomial_coefficient`: a nonzero `p_k(G)`
-plus CN yields a coloring. Proving this formalizes the certificate→colorability
-implication.
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.

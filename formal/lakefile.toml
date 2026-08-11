@@ -1,6 +1,13 @@
 name = "konigsberg"
 defaultTargets = ["Konigsberg"]
 
+[leanOptions]
+# Unbound identifiers must not silently become fresh ∀-variables — a typo in a
+# theorem statement would then compile as a different (often vacuous) claim.
+# See docs/TRUST.md and docs/handoff/FIDELITY_GATES.md (WP2).
+autoImplicit = false
+relaxedAutoImplicit = false
+
 # mathlib is a DEPENDENCY, never a fork. Pinned by tag here as a floor; the real
 # freeze is the commit written into lake-manifest.json by `lake update` — COMMIT
 # that file. Bump deliberately, never incidentally.

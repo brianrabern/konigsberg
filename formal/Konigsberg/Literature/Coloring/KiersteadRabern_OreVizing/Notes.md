@@ -1,18 +1,17 @@
 # KiersteadRabern_OreVizing
 
-**Source.** H. Kierstead & L. Rabern, *Improved lower bounds on the number of
-edges in list critical and online list critical graphs*, arXiv:1406.7355.
-TeX: [`github.com/landon/Research/OreVizing`](https://github.com/landon/Research/tree/master/OreVizing)
-@ `551eea7`. Public domain.
+## Informal statement
+Improved edge lower bounds for k-list-critical graphs (k≥6) and Ore-degree Brooks for list coloring.
 
-**Claims stated.**
-1. `edgeBound_listCritical` — `2‖G‖ ≥ g_k(|G|, c)` for non-complete
-   `k`-list-critical `G` (`k ≥ 6`), with `c = (k−3)α_k` (`k ≥ 8`) or
-   `(k−4)α_k` (`k ∈ {6,7}`).
-2. `oreBrooks_list` — Ore-degree Brooks for choosability:
-   `θ ≥ 18`, `ω ≤ θ/2` ⇒ `⌊θ/2⌋`-choosable.
+## Source
+Kierstead–Rabern, arXiv:1406.7355 / OreVizing TeX (public domain).
 
-**Lean deps.** `KListCritical`, `Choosable`, `cliqueNum` (mathlib),
-`NotCompleteOfOrder` (shared with `Rabern_4ListCriticalEdgeBound`). Online /
-AT-critical variants and the general “many edges or f_H-AT subgraph” lemma
-are deferred until orientation / paintability land in Areas.
+## Provenance
+Agent-drafted stated targets; human fidelity read.
+
+## Fidelity review
+(See statement comments; backfilled under FIDELITY_GATES.)
+
+## Sanity checks
+Concrete non-vacuity + conclusion probes live in [`SanityChecks.lean`](SanityChecks.lean)
+(`decide` / `norm_num` only; independent of any `sorry` proof). See `docs/TRUST.md`.
