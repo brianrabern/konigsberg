@@ -271,23 +271,35 @@ def render(s: dict, flashes: list[str]) -> str:
         L.append(f"   discharging   {paint('(no attempt yet)', c.grey)}")
     L.append("")
 
-    # CLAIMS
-    L.append(paint(f" ▏CLAIMS  {s['n_claims']}", c.bold))
+    # CLAIMS — separate real results from graph-construction byproducts
     palette = {"forbidden-config": c.green, "discharging": c.bgreen,
                "lean-proof": c.bgreen, "reducible-hit": c.cyan,
                "census/search": c.blue, "BK-violation(!)": c.bmagenta}
-    for k, n in s["kinds"].most_common():
-        bar = paint("▮" * min(n, 24), palette.get(k, c.grey))
-        L.append(f"   {n:>4} {paint(k.ljust(16), palette.get(k, c.white))} {bar}")
+    result_kinds = set(palette)
+    results = [(k, n) for k, n in s["kinds"].most_common() if k in result_kinds]
+    infra = [(k, n) for k, n in s["kinds"].most_common() if k not in result_kinds]
+    n_res = sum(n for _, n in results)
+    L.append(paint(f" ▏RESULTS  {n_res}", c.bold))
+    if results:
+        for k, n in results:
+            bar = paint("▮" * min(n, 24), palette.get(k, c.grey))
+            L.append(f"   {n:>4} {paint(k.ljust(16), palette.get(k, c.white))} {bar}")
+    else:
+        L.append(f"   {paint('none yet — warming up on graph construction', c.grey)}")
+    if infra:
+        L.append("   " + paint("infra: " + ", ".join(f"{n}×{k}" for k, n in infra),
+                                c.dim))
     L.append("")
 
-    # PULSE
+    # PULSE — health is about chatter vs tools; zero chat turns is IDEAL
     L.append(paint(" ▏PULSE", c.bold))
-    ratio = (s["n_tcalls"] / s["n_asst"]) if s["n_asst"] else 0.0
-    rc = c.bgreen if ratio >= 0.8 else c.yellow
-    L.append(f"   tool calls {s['n_tcalls']}   turns {s['n_asst']}   "
-             f"continues {max(s['n_user']-1,0)}   "
-             f"tool/turn {paint(f'{ratio:.2f}', rc)}")
+    tcalls, chat = s["n_tcalls"], s["n_asst"]
+    healthy = tcalls > 0 and chat <= tcalls
+    hc = c.bgreen if healthy else c.yellow
+    label = "tool-driving" if healthy else ("idle" if tcalls == 0 else "⚠ talky")
+    L.append(f"   tool calls {paint(str(tcalls), c.cyan)}   "
+             f"chat turns {paint(str(chat), hc)}   "
+             f"continues {max(s['n_user']-1, 0)}   {paint(label, hc)}")
     top = "  ".join(f"{paint(str(n),c.cyan)}×{name}"
                     for name, n in s["tool_hist"].most_common(6))
     L.append(f"   {top or paint('(no tool calls yet)', c.grey)}")

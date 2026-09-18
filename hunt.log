@@ -1,0 +1,124 @@
+repl: live LeanREPL
+BK campaign — looping until the conjecture is proved or disproved 
+(Ctrl-C also stops); lemmas lock and the hunt continues
+  ⎿  campaign_status {}
+  ⎿  literature_search {"query":"Rabern Borodin-Kostochka reducible 
+configuration"}
+  ⎿  STAIRCASE (ledger, not prose):   locked lemmas: 0 (0 durable) — 
+(none)   C: 0 cores — (none)   bridge: BK.reducible_of_…
+  ⎿  results: {'name': 'BK_DischargingClosure', 'citation': 
+'Konigsberg discharging closure (reducible ∧ unavoidable ⇒ no D-…
+  ⎿  make_graph {"kind":"path","n":3}
+  ⎿  [python-checked] [n=3] make_graph(path) → graph6=BW (n=3, m=2)
+  ★  [python-checked] [n=3] make_graph(path) → graph6=BW (n=3, m=2)
+  ⎿  describe_graph {"graph6":"Bg"}
+  ⎿  [python-checked] [n=3] describe Bg: n=3 m=2 deg=[1, 2, 1] δ=1 Δ=2
+avg=1.333333 dens=0.666667 connected=True #comp=1 bip…
+  ★  [python-checked] [n=3] describe Bg: n=3 m=2 deg=[1, 2, 1] δ=1 Δ=2
+avg=1.333333 dens=0.666667 connected=True #comp=1 bipartite=True 
+girth=None tree=True forest=True regular=False planar=True 
+degeneracy=1 named=P_3
+  ⎿  reducible_configuration {"core":"Bg","degrees":[8,8,8],"D":9}
+  ⎿  inconclusive: bad f-list found (method inconclusive; proves 
+nothing); witness bad f-list [[0], [0, 1], [1]] (proves not…
+  ⎿  make_graph {"kind":"complete","n":2}
+  ⎿  lean_search {"goal":"∀ (G : SimpleGraph V), 
+G.chromaticNumber ≤ max (Δ - 1) ω"}
+  ⎿  [python-checked] [n=2] make_graph(complete) → graph6=A_ 
+(n=2, m=1)
+  ★  [python-checked] [n=2] make_graph(complete) → graph6=A_ 
+(n=2, m=1)
+loading Lean scratch env (Konigsberg + Mathlib.Tactic)…
+Lean scratch env ready
+  ⎿  results: (none)
+  ⎿  reducible_configuration {"core":"A_","degrees":[8,8],"D":9}
+  ⎿  inconclusive: bad f-list found (method inconclusive; proves nothing); witness bad f-list 
+[[0], [0]] (proves nothing abo…
+  ⎿  make_graph {"kind":"complete","n":3}
+  ⎿  make_graph {"kind":"empty","n":2}
+  ⎿  [python-checked] [n=3] make_graph(complete) → graph6=Bw (n=3, m=3)
+  ★  [python-checked] [n=3] make_graph(complete) → graph6=Bw (n=3, m=3)
+  ⎿  [python-checked] [n=2] make_graph(empty) → graph6=A? (n=2, m=0)
+  ★  [python-checked] [n=2] make_graph(empty) → graph6=A? (n=2, m=0)
+  ⎿  make_graph {"kind":"cycle","n":4}
+  ⎿  make_graph {"kind":"cycle","n":6}
+  ⎿  [python-checked] [n=4] make_graph(cycle) → graph6=Cr (n=4, m=4)
+  ★  [python-checked] [n=4] make_graph(cycle) → graph6=Cr (n=4, m=4)
+  ⎿  [python-checked] [n=6] make_graph(cycle) → graph6=EoSo (n=6, m=6)
+  ★  [python-checked] [n=6] make_graph(cycle) → graph6=EoSo (n=6, m=6)
+  ⎿  literature_search {"query":"Rabern hitting maximum cliques independent set BK"}
+  ⎿  literature_search {"query":"reducible configuration f-choosable core degrees BK seed"}
+  ⎿  results: {'name': 'King_HittingMaxCliques_Lopsided', 'citation': 'A. King, Hitting all 
+maximum cliques with a stable se…
+  ⎿  results: {'name': 'BK_ReducibleOfFChoosable', 'citation': 'Konigsberg reducibility bridge
+(BK minimal counterexample / …
+  ⎿  reducible_configuration {"core":"Bw","degrees":[8,8,8],"D":9}
+  ⎿  make_graph {"kind":"complete","n":4}
+  ⎿  inconclusive: bad f-list found (method inconclusive; proves nothing); witness bad f-list 
+[[0, 1], [0, 1], [0, 1]] (prov…
+  ⎿  [python-checked] [n=4] make_graph(complete) → graph6=C~ (n=4, m=6)
+  ★  [python-checked] [n=4] make_graph(complete) → graph6=C~ (n=4, m=6)
+  ⎿  reducible_configuration {"core":"Bg","degrees":[8,7,8],"D":9}
+  ⎿  reducible_configuration {"core":"Bg","degrees":[7,8,7],"D":9}
+  ⎿  [python-checked] [palette<=9] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=…
+  ★  [python-checked] [palette<=9] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=9): core=Bg, degree spec d_G={0:8, 1:7, 2:8}, slack f={0:1, 
+1:3, 2:1}; core is f-choosable (exhaustive to palette P=9) ⇒ reducible ⇒ absent from every 
+minimal counterexample.
+  ⎿  REDISCOVERY: this core is already on the ledger. Do not retest it. Call campaign_status, 
+then take the NEXT stair (new …
+  ★  [python-checked] [palette<=6] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=9): core=Bg, degree spec d_G={0:7, 1:8, 2:7}, slack f={0:2, 
+1:2, 2:2}; core is f-choosable (exhaustive to palette P=6) ⇒ reducible ⇒ absent from every 
+minimal counterexample.
+  ⎿  campaign_status {}
+  ⎿  STAIRCASE (ledger, not prose):   locked lemmas: 0 (0 durable) — (none)   C: 1 cores — Bg 
+bridge: BK.reducible_of_fCho…
+  ⎿  describe_graph {"graph6":"Cl"}
+  ⎿  [python-checked] [n=4] describe Cl: n=4 m=4 deg=[2, 2, 2, 2] δ=2 Δ=2 avg=2.0 
+dens=0.666667 connected=True #comp=1 bipar…
+  ★  [python-checked] [n=4] describe Cl: n=4 m=4 deg=[2, 2, 2, 2] δ=2 Δ=2 avg=2.0 
+dens=0.666667 connected=True #comp=1 bipartite=True girth=4 tree=False forest=False 
+regular=True planar=True degeneracy=2 named=C_4
+  ⎿  reducible_configuration {"core":"Cl","degrees":[8,8,8,8],"D":9}
+  ⎿  [python-checked] [palette<=8] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=…
+  ★  [python-checked] [palette<=8] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=9): core=Cl, degree spec d_G={0:8, 1:8, 2:8, 3:8}, slack 
+f={0:2, 1:2, 2:2, 3:2}; core is f-choosable (exhaustive to palette P=8) ⇒ reducible ⇒ absent 
+from every minimal counterexample.
+  ⎿  campaign_status {}
+  ⎿  STAIRCASE (ledger, not prose):   locked lemmas: 0 (0 durable) — (none)   C: 2 cores — Bg,
+Cl   bridge: BK.reducible_of_…
+
+Ledger
+  [python-checked] [n=3] make_graph(path) → graph6=BW (n=3, m=2)
+  [python-checked] [n=3] describe Bg: n=3 m=2 deg=[1, 2, 1] δ=1 Δ=2 avg=1.333333 dens=0.666667
+connected=True #comp=1 bipartite=True girth=None tree=True forest=True regular=False 
+planar=True degeneracy=1 named=P_3
+  [python-checked] [n=2] make_graph(complete) → graph6=A_ (n=2, m=1)
+  [python-checked] [n=3] make_graph(complete) → graph6=Bw (n=3, m=3)
+  [python-checked] [n=2] make_graph(empty) → graph6=A? (n=2, m=0)
+  [python-checked] [n=4] make_graph(cycle) → graph6=Cr (n=4, m=4)
+  [python-checked] [n=6] make_graph(cycle) → graph6=EoSo (n=6, m=6)
+  [python-checked] [n=4] make_graph(complete) → graph6=C~ (n=4, m=6)
+  [python-checked] [palette<=9] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=9): core=Bg, degree spec d_G={0:8, 1:7, 2:8}, slack f={0:1, 
+1:3, 2:1}; core is f-choosable (exhaustive to palette P=9) ⇒ reducible ⇒ absent from every 
+minimal counterexample.
+  [python-checked] [palette<=6] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=9): core=Bg, degree spec d_G={0:7, 1:8, 2:7}, slack f={0:2, 
+1:2, 2:2}; core is f-choosable (exhaustive to palette P=6) ⇒ reducible ⇒ absent from every 
+minimal counterexample.
+  [python-checked] [n=4] describe Cl: n=4 m=4 deg=[2, 2, 2, 2] δ=2 Δ=2 avg=2.0 dens=0.666667 
+connected=True #comp=1 bipartite=True girth=4 tree=False forest=False regular=True planar=True
+degeneracy=2 named=C_4
+  [python-checked] [palette<=8] FORBIDDEN CONFIGURATION (BK minimal counterexample, H_BK: 
+Δ=D≥9, K_D-free, D-critical; Δ=9): core=Cl, degree spec d_G={0:8, 1:8, 2:8, 3:8}, slack 
+f={0:2, 1:2, 2:2, 3:2}; core is f-choosable (exhaustive to palette P=8) ⇒ reducible ⇒ absent 
+from every minimal counterexample.
+
+round cap reached (15/15)
+session be619a32831a
+formal tier: live
