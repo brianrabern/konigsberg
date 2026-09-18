@@ -1,109 +1,84 @@
 # Konigsberg
 
-*Formal and empirical tools for graph theory research.*
+Formal and empirical tools for graph theory research. The LLM proposes; **tools
+mint Claims** on an epistemic ledger. Lean kernel proofs and solver certificates
+are established; model prose is commentary.
 
-An agentic research assistant for graph theory. The LLM is the reasoning core;
-the value is the **harness**: deterministic tooling, a formally verified library,
-and an epistemic ledger that makes every claim traceable to *how* it was
-established.
+The standing target is the Borodin–Kostochka conjecture (χ ≤ max{Δ−1, ω} for
+Δ ≥ 9). Graph coloring is the first vertical.
 
-Konigsberg is a monorepo with a Lean formal tier (mathlib as a dependency, a
-hand-built choosability/criticality library, and a corpus of formalized
-literature statements), a Python empirical tier (enumeration, SAT, and a
-reimplementation of Landon Rabern's choosability solvers validated by
-differential testing against the original), and an agent harness that
-orchestrates both behind a rigid epistemic ledger. Graph coloring is built out
-first as the exemplar area and as the template other areas copy. The north star
-is materially accelerating a human attack on Borodin–Kostochka; the deliverable
-at every milestone is an instrument useful on its own terms.
+## Modes
+
+Same REPL, same ledger. What changes is when the loop stops.
+
+| Mode | How | Stops when |
+|---|---|---|
+| **Chat** (default) | `uv run konig` | First prose reply, or ~40 tool steps. You steer. |
+| **Hunt** | `uv run konig --until-proved --task "…"` or `/hunt <goal>` | A `lean_prove` kernel proof of that goal (or Ctrl-C / round cap). Prose does not stop it. |
+| **Forever** | `uv run konig --forever` or `/forever` | Durable `lean_prove` of `borodinKostochka`, a certified Δ ≥ 9 `bk_predicate` **VIOLATES**, or you. Ordinary lemmas lock and the campaign continues. |
+
+`--until-proved` is for a named lemma. `--forever` is the BK campaign. Do not
+mix them up.
+
+Sessions persist under `~/.konigsberg/sessions/`. Resume with `--continue` or
+`--resume <id>` (add `--forever` / `--until-proved` to keep hunting).
 
 ## Run on a local LLM (llama.cpp + ROCm + Qwen)
 
-Step-by-step: **[`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md)**.
+Walkthrough: [`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md).
 
 ```bash
 git clone <this-repo-url> konigsberg && cd konigsberg
 make setup                 # python, nauty, mathlib cache, lake build
 make lean-smoke
-cp .env.example .env       # KONIGSBERG_PROVIDER=local → llama-server :8080
+cp .env.example .env       # local provider → llama-server :8080
 # llama-server already up (HIP build, --jinja, ctx 32k, Qwen Instruct GGUF)
-uv run konig --forever --max-rounds 20
-uv run konig --forever
+uv run konig                             # chat
+uv run konig --forever --max-rounds 20   # smoke the campaign
+uv run konig --forever                   # unbounded BK hunt
 ```
 
-Prereqs: [`uv`](https://docs.astral.sh/uv/), [`elan`](https://github.com/leanprover/elan),
-a **ROCm** llama.cpp (`GGML_HIP=ON`), a Qwen Instruct/Coder GGUF. No Anthropic key.
+Needs [`uv`](https://docs.astral.sh/uv/), [`elan`](https://github.com/leanprover/elan),
+llama.cpp built with **`GGML_HIP=ON`**, and a Qwen Instruct/Coder GGUF. No
+Anthropic key. `make setup` does not rebuild mathlib from source.
+
+Claude instead: set `ANTHROPIC_API_KEY` in `.env` (and omit
+`KONIGSBERG_PROVIDER=local`). Same commands.
+
+```bash
+uv run konig --until-proved --task "Prove Nat.add_comm for 0"
+make gates                   # CI trust gates
+```
 
 ## Layout
 
-| Path | Tier | Owner |
-|---|---|---|
-| `formal/` | Formal (Lean): mathlib + own library + formalized literature | core (`Foundations/`), community (`Areas/`, `Literature/`) |
-| `empirical/` | Empirical (Python): enumeration, SAT, choosability solvers | core + community |
-| `harness/` | Agent (Python): loop, tools, ledger, context surfacing | core |
-| `ci/` | Trust gates: axioms, sorry, imports, conventions, audit self-test | core |
-| `vendor/` | Landon Rabern's .NET oracle — **test oracle only**; skip for the hunt | — |
-| `templates/` | Copyable skeletons for new areas / literature entries | — |
+Three tiers. Lean and Python never import each other; the harness talks to both
+via subprocess.
 
-Lean and Python never import each other. The harness is the only thing that
-talks to both, via subprocess.
+| Path | What |
+|---|---|
+| `formal/` | Lean 4.31 + mathlib + Konigsberg library + Literature corpus |
+| `empirical/` | Graphs, choosability, reducible configs, discharging |
+| `harness/` | Agent loop, tools, ledger, REPL |
+| `ci/` | Trust gates (axioms, sorry, imports, …) |
+| `vendor/` | .NET test oracle — skip; the hunt does not need it |
+| `templates/` | Skeletons for new areas / literature entries |
 
-## Claim status — a structured record, not a rank
+## Trust
 
-A claim's trust is a `Provenance` record (`harness/konigsberg_harness/ledger.py`)
-carrying an explicit **trust root**, not a point on a line. `proved` (Lean
-kernel) and `solver-certified` (empirical) bottom out in different things; the
-ledger keeps that distinction visible rather than collapsing it into an ordinal.
+Only a tool-minted **Claim** is established. Chat answers are zoned
+`Established (ledger)` vs `Commentary`. Details: [`docs/TRUST.md`](docs/TRUST.md).
+`docs/handoff/` is a lab notebook.
 
-**Konigsberg's hard trust boundary is the ledger.** Everything the model says in
-prose is commentary and must be read as such. Final answers are rendered in
-zones — `Established (ledger)` (generated from Claims, not model text), optional
-`Definition used:` (which convention drove the verdict), optional
-`References (corpus)`, and `Commentary` (unverified prose). System-prompt rules
-reduce the chance of misleading narration, but they are not a kernel-style
-guarantee: only Claims carry trust.
+| Label | Means |
+|---|---|
+| `proved` | Lean kernel, axioms in whitelist |
+| `certificate-checked` | Finite object independently re-checked |
+| `solver-certified` | Solver asserted; port matches oracle. Not re-checked |
+| `python-checked` | Enumeration up to a stated bound |
+| `stated` | Typechecks. Says nothing about truth |
 
-**Definitional fidelity is upstream of the ledger.** The ledger certifies that
-claims are *true*, not that they *answer the question asked*. If the agent
-interprets "4-list-critical" as "4-choosable" and then correctly proves
-4-choosability, the trust gates pass — they certify truth, not relevance. Tools
-that bake in an index (`list_critical`) and a visible `Definition used:` line
-remove the common failure mode and make the interpretation falsifiable, but
-they cannot fully guarantee correct interpretation. That residual gap — "did
-you prove the right theorem?" — is inherent to the trust model and should stay
-named, not hidden. For the formal tier the same ceiling is spelled out in
-[`docs/TRUST.md`](docs/TRUST.md): kernel + axiom gates guarantee *proofs*;
-statements get sanity checks and a best-effort read, with no warrant that they
-say what the docstring claims.
-
-| Human label | Trust root | Means |
-|---|---|---|
-| `proved` | Lean kernel | No `sorry`; axioms within whitelist |
-| `proved-mod-axioms` | Lean kernel | Proved; non-standard axioms listed |
-| `certificate-checked` | re-checked certificate | Solver emitted a finite object we independently verified |
-| `solver-certified` | solver + validated port | Solver asserted; port matches oracle. **Not** re-checked |
-| `python-checked` | enumeration | Empirical, up to a stated bound |
-| `stated` | — | Statement typechecks. Says nothing about truth |
-| `conjectured` | model | Unverified LLM output |
-
-## Quickstart (also Claude)
-
-Python ≥ 3.11. On macOS, Homebrew installs nauty when missing.
-
-```bash
-make setup                   # or: make deps && make lean-setup
-uv run konig                 # interactive REPL; ledger under ~/.konigsberg/sessions/
-uv run konig --forever       # BK campaign (needs a live model)
-uv run konig --continue      # resume latest session
-# Live model: repo-root `.env` (see .env.example). Local llama.cpp:
-#   KONIGSBERG_PROVIDER=local + OPENAI_BASE_URL. Or ANTHROPIC_API_KEY.
-make gates                   # same trust gates CI runs
-```
-
-## Status
-
-Working three-tier instrument. Hunt setup: [`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md).
-Trust: [`docs/TRUST.md`](docs/TRUST.md). `docs/handoff/` is a lab notebook.
+`/promote` into Literature is human-gated. A finite sweep does not prove BK.
 
 ## License
 
