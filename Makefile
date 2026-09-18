@@ -1,4 +1,4 @@
-.PHONY: gates test lint sync deps setup lean-setup lean-smoke axioms-lean campaign preflight
+.PHONY: gates test lint sync deps setup lean-setup lean-smoke axioms-lean campaign preflight watch
 
 sync:        ## install python packages (editable)
 	uv sync
@@ -36,6 +36,9 @@ axioms-lean: sync  ## authoritative axiom gate against a live Lean env
 
 campaign:  ## autonomous BK hunt until proved/disproved (needs a live model)
 	uv run konig --forever
+
+watch:  ## live progress dashboard for the running hunt (read-only; ARGS=... to pass flags)
+	uv run python scripts/hunt_watch.py $(ARGS)
 
 preflight:  ## lake build + trust gates before an unbounded --forever soak
 	cd formal && lake build
