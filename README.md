@@ -35,6 +35,8 @@ cp .env.example .env       # local provider → llama-server :8080
 # llama-server already up (HIP build, --jinja, ctx 32k, Qwen Instruct GGUF)
 uv run konig                             # chat
 uv run konig --forever --max-rounds 20   # smoke the campaign
+make preflight                           # lake build + gates before soak
+uv run python scripts/referee_bridge.py  # retro-/referee the bridge (ungated)
 uv run konig --forever                   # unbounded BK hunt
 ```
 
@@ -48,6 +50,7 @@ Claude instead: set `ANTHROPIC_API_KEY` in `.env` (and omit
 ```bash
 uv run konig --until-proved --task "Prove Nat.add_comm for 0"
 make gates                   # CI trust gates
+make preflight               # lake build + gates (before unbounded --forever)
 ```
 
 ## Layout

@@ -144,7 +144,39 @@ failed smoke — fix the table below before an unbounded run.
 
 ---
 
-## 6. Unbounded campaign
+## 6. Pre-flight before the unbounded soak
+
+The 20-round smoke is not enough. Before `tmux` / `--forever` with no round
+cap:
+
+```bash
+make preflight
+```
+
+That is `cd formal && lake build` then `make gates` (green). Gates already
+run `ci/discharging_self_test.py`. To smoke discharging on its own:
+
+```bash
+uv run python ci/discharging_self_test.py
+```
+
+**Retro-`/referee` the reducibility bridge** — still ungated. The lemma is
+already `formalized` as
+`Konigsberg.Literature.Coloring.BK_ReducibleOfFChoosable.reducible_of_fChoosable`.
+`ci/referee_self_test.py` (in gates) is the planted-flaw fixture, not a
+review of this theorem. `/promote` stays human-gated.
+
+```bash
+uv run python scripts/referee_bridge.py
+```
+
+Needs a live model for an adversarial pass (same `.env` as the hunt).
+Without one you only get heuristic checks. Do **not** `/promote` — the
+corpus already has the entry.
+
+---
+
+## 7. Unbounded campaign
 
 ```bash
 tmux new -s bk
@@ -204,6 +236,9 @@ make lean-smoke
 cp .env.example .env
 uv run konig                              # interactive
 uv run konig --forever --max-rounds 20    # smoke
+make preflight                            # lake build + gates before soak
+uv run python ci/discharging_self_test.py # discharging smoke (also in gates)
+uv run python scripts/referee_bridge.py   # retro-referee the bridge (ungated)
 uv run konig --forever                    # campaign
 uv run konig --continue --forever         # resume
 make campaign                             # same as --forever

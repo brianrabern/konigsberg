@@ -1,6 +1,6 @@
 # Local LLM — llama.cpp (ROCm) + Qwen
 
-Clone → install → server → `--forever`:
+Clone → install → server → 20-round smoke → `make preflight` → `--forever`:
 [`docs/LOCAL_BK_HUNT.md`](../LOCAL_BK_HUNT.md).
 
 HIP build (not the ignored `LLAMA_HIPBLAS` flag):
