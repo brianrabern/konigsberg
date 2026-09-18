@@ -7,10 +7,10 @@ from konigsberg_harness.agent import (
     AgentConfig,
 )
 from konigsberg_harness.campaign import (
-    REFORMULATE_BANNER,
     REDISCOVERY_BANNER,
-    STAIRCASE_MARK,
+    REFORMULATE_BANNER,
     STAGNATION_THRESHOLD,
+    STAIRCASE_MARK,
     CampaignBind,
     extract_core,
     format_campaign_snapshot,

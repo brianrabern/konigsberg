@@ -106,7 +106,7 @@ class _LeanAxiomProbe:
         if closer is not None:
             try:
                 closer()
-            except Exception:  # noqa: BLE001 — dead process; we are replacing it
+            except Exception:  # noqa: BLE001, S110 — dead process; we are replacing it
                 pass
         from konigsberg_harness.lean_repl import LeanREPL
 
@@ -116,14 +116,14 @@ class _LeanAxiomProbe:
         """Best-effort new process after a failed load / #print axioms."""
         try:
             self._recreate()
-        except Exception:  # noqa: BLE001 — next load() will surface a fresh error
+        except Exception:  # noqa: BLE001, S110 — next load() will surface a fresh error
             pass
 
     def load(self, modules: list[str]) -> None:
         """Start a FRESH env with `modules` imported. Raises on import error."""
         try:
             self._repl.restart()
-        except Exception:
+        except Exception:  # noqa: BLE001 — recreate a dead process, then retry
             self._recreate()
             self._repl.restart()
         src = "\n".join(f"import {m}" for m in modules)

@@ -259,7 +259,7 @@ def _score(query: str, entry: LiteratureEntry, claim: dict[str, Any]) -> int | N
     # substring. Score by how many query tokens appear across the searchable text.
     tokens = [t for t in re.split(r"[^a-z0-9]+", q) if len(t) >= 3]
     if len(tokens) >= 2:
-        hay = " ".join((name, short, cite, area, notes))
+        hay = f"{name} {short} {cite} {area} {notes}"
         present = sum(1 for t in tokens if t in hay)
         if present >= 2 and present >= (len(tokens) + 1) // 2:
             return min(25, 4 + 3 * present)  # ranked below exact substring hits

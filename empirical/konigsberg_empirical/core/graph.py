@@ -18,7 +18,7 @@ class Graph:
     edges: frozenset[tuple[int, int]]
 
     @staticmethod
-    def of(n: int, edges) -> "Graph":
+    def of(n: int, edges) -> Graph:
         norm = frozenset(tuple(sorted((int(u), int(v)))) for u, v in edges)
         for u, v in norm:
             if not (0 <= u < n and 0 <= v < n) or u == v:
@@ -35,7 +35,7 @@ class Graph:
     def max_degree(self) -> int:
         return max((self.degree(v) for v in range(self.n)), default=0)
 
-    def canonical(self) -> "Graph":
+    def canonical(self) -> Graph:
         """Canonical form under vertex relabeling. TODO: nauty-backed canon.
 
         Until wired to nauty, this returns self; differential tests must not rely

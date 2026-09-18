@@ -322,11 +322,10 @@ def stagnation_eligible(nxt: str) -> bool:
 
     REFORMULATE would tell the model to invent cores or skip the bridge.
     """
-    if "re-derive Rabern seed" in nxt:
-        return False
-    if "BK.reducible_of_fChoosable" in nxt:
-        return False
-    return True
+    return (
+        "re-derive Rabern seed" not in nxt
+        and "BK.reducible_of_fChoosable" not in nxt
+    )
 
 
 def stagnation_text(bind: CampaignBind) -> str:

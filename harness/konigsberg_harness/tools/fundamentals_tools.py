@@ -1038,27 +1038,33 @@ def register_fundamentals(reg: Any) -> None:
         (
             "independent_hitting_set",
             independent_hitting_set,
-            "Rabern's property: does an independent set meet every MAXIMUM clique? "
-            "Returns a re-checked witness (holds) or a complete-search negative "
-            "(fails, e.g. C₅). ω and #max-cliques reported. Certificate-checked on "
-            "a hit; the engine under the BK clique-structure theorems.",
+            (
+                "Rabern's property: does an independent set meet every MAXIMUM clique? "
+                "Returns a re-checked witness (holds) or a complete-search negative "
+                "(fails, e.g. C₅). ω and #max-cliques reported. Certificate-checked on "
+                "a hit; the engine under the BK clique-structure theorems."
+            ),
             Graph6Args,
         ),
         (
             "mycielskian",
             mycielskian,
-            "Mycielskian μ(G) → canonical graph6: raises χ by one while keeping the "
-            "clique number fixed (triangle-free stays triangle-free). μ(C₅) is the "
-            "Grötzsch graph; iterate from K₂ for the triangle-free k-chromatic family. "
-            "Use to build a recalled construction, then verify it with a tool.",
+            (
+                "Mycielskian μ(G) → canonical graph6: raises χ by one while keeping the "
+                "clique number fixed (triangle-free stays triangle-free). μ(C₅) is the "
+                "Grötzsch graph; iterate from K₂ for the triangle-free k-chromatic family. "
+                "Use to build a recalled construction, then verify it with a tool."
+            ),
             Graph6Args,
         ),
         (
             "blow_up",
             blow_up,
-            "Blow up each vertex into r copies → canonical graph6. clique=True: each "
-            "vertex → Kᵣ (clique blow-up); clique=False: → independent set. Adjacent "
-            "vertices' copies are fully joined.",
+            (
+                "Blow up each vertex into r copies → canonical graph6. clique=True: each "
+                "vertex → Kᵣ (clique blow-up); clique=False: → independent set. Adjacent "
+                "vertices' copies are fully joined."
+            ),
             BlowUpArgs,
         ),
         (

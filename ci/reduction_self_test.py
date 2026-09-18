@@ -52,8 +52,7 @@ def _edge() -> str:
 def test_known_reducible_hit() -> None:
     core = _path3()
     result = reducible_configuration(core, degrees=[8, 8, 8], D=10)
-    if not isinstance(result, Claim):
-        raise AssertionError(f"expected HIT Claim, got {result!r}")
+    assert isinstance(result, Claim), f"expected HIT Claim, got {result!r}"
     if "FORBIDDEN CONFIGURATION" not in result.statement:
         raise AssertionError("HIT Claim missing forbidden-configuration header")
     if "not reducible" in result.statement.lower():
@@ -77,10 +76,10 @@ def _triangle() -> str:
 def test_known_miss_silent() -> None:
     core = _triangle()
     result = reducible_configuration(core, degrees=[8, 8, 8], D=9)
-    if isinstance(result, Claim):
-        raise AssertionError("MISS must not mint a Claim")
-    if not isinstance(result, ReducibleConfigurationResult):
-        raise AssertionError(f"expected ReducibleConfigurationResult, got {type(result)}")
+    assert not isinstance(result, Claim), "MISS must not mint a Claim"
+    assert isinstance(result, ReducibleConfigurationResult), (
+        f"expected ReducibleConfigurationResult, got {type(result)}"
+    )
     if "not reducible" in str(result).lower():
         raise AssertionError("MISS must never claim 'not reducible'")
     if "inconclusive" not in str(result).lower():
@@ -91,8 +90,7 @@ def test_known_miss_silent() -> None:
 def test_out_of_scope() -> None:
     core = _edge()
     result = reducible_configuration(core, degrees=[9, 9], D=9)
-    if isinstance(result, Claim):
-        raise AssertionError("out-of-scope must not mint a Claim")
+    assert not isinstance(result, Claim), "out-of-scope must not mint a Claim"
     if not isinstance(result, ReducibleConfigurationResult) or not result.out_of_scope:
         raise AssertionError(f"expected out_of_scope result, got {result!r}")
     print("  OK out-of-scope MISS (no crash)")
