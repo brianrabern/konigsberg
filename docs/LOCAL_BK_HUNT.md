@@ -54,7 +54,7 @@ and miss tools; they are not a hunt engine.
 ## 1. Clone Konigsberg
 
 ```bash
-git clone <this-repo-url> konigsberg
+git clone https://github.com/brianrabern/konigsberg.git
 cd konigsberg
 ```
 

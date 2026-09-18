@@ -28,7 +28,7 @@ Sessions persist under `~/.konigsberg/sessions/`. Resume with `--continue` or
 Walkthrough: [`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md).
 
 ```bash
-git clone <this-repo-url> konigsberg && cd konigsberg
+git clone https://github.com/brianrabern/konigsberg.git && cd konigsberg
 make setup                 # python, nauty, mathlib cache, lake build
 make lean-smoke
 cp .env.example .env       # local provider → llama-server :8080
