@@ -70,7 +70,7 @@ Monorepo. Lean and Python live in sibling top-level directories and never import
 ```
 konigsberg/
 ├── README.md
-├── LICENSE                      # Apache 2.0 (Landon's reuse terms cleared)
+├── LICENSE                      # Apache 2.0
 ├── CONTRIBUTING.md
 ├── lean-toolchain
 │
@@ -341,8 +341,7 @@ The contributor pool is {graph theorists} ∩ {people who write Lean}, which tod
 - **Templates are the product** for community growth. Someone adds `Matching/` by copying `templates/new-area/`. If the template is good, contribution is mechanical; if absent, every new area is a bespoke negotiation and growth stalls.
 
 ### Licensing
-Apache 2.0 (matches mathlib, frictionless). Landon has agreed to reuse of the
-ported algorithms, so the license is unblocked.
+Apache 2.0 (matches mathlib, frictionless).
 
 ### Strategic caution
 "The community will build out other areas" is the standard open-source dream and usually does not happen unaided. **Architect so the project is fully valuable if it is only ever you**, and treat contributors as upside. The coloring vertical must stand alone as a useful instrument for your own BK work. If it does, contributors follow the utility. If it doesn't, no governance structure will summon them.

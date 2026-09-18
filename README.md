@@ -137,6 +137,4 @@ not build it to run the hunt (those tests skip if the oracle is missing).
 
 ## License
 
-Source-available for private research. **Not Apache 2.0 yet** — reuse terms
-for the Rabern choosability port must be resolved in writing before a public
-OSI release. See `LICENSE`.
+Apache License 2.0. See `LICENSE`.
