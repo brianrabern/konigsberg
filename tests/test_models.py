@@ -78,7 +78,9 @@ def test_respond_one_tool_use(monkeypatch):
     fake = SimpleNamespace(messages=messages, created=[], api_key=None)
     _install_fake_anthropic(monkeypatch, fake)
 
-    m = AnthropicModel(cheap_model_id="cheap-id", frontier_model_id="frontier-id")
+    m = AnthropicModel(
+        cheap_model_id="claude-test-cheap", frontier_model_id="claude-test-frontier"
+    )
     tools = [
         {
             "name": "verify_coloring",
@@ -93,7 +95,7 @@ def test_respond_one_tool_use(monkeypatch):
         name="verify_coloring",
         args={"graph6": "Bg", "coloring": [0, 1, 0]},
     )
-    assert messages.calls[-1]["model"] == "frontier-id"
+    assert messages.calls[-1]["model"] == "claude-test-frontier"
     assert messages.calls[-1]["tools"] == tools
 
 
@@ -169,17 +171,42 @@ def test_history_translation_groups_tool_blocks():
 
 def test_env_overrides_default_model_ids(monkeypatch):
     monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
-    monkeypatch.setenv("ANTHROPIC_CHEAP_MODEL", "env-cheap")
-    monkeypatch.setenv("ANTHROPIC_FRONTIER_MODEL", "env-frontier")
+    monkeypatch.setenv("ANTHROPIC_CHEAP_MODEL", "haiku")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "opus 4.8")
+    monkeypatch.delenv("ANTHROPIC_FRONTIER_MODEL", raising=False)
     messages = _FakeMessages()
     fake = SimpleNamespace(messages=messages, created=[], api_key=None)
     _install_fake_anthropic(monkeypatch, fake)
 
     m = AnthropicModel()
-    assert m.cheap_model_id == "env-cheap"
-    assert m.frontier_model_id == "env-frontier"
-    assert m.model_id_for(Tier.CHEAP) == "env-cheap"
-    assert m.model_id_for(Tier.FRONTIER) == "env-frontier"
+    assert m.cheap_model_id == "claude-haiku-4-5"
+    assert m.frontier_model_id == "claude-opus-4-8"
+    assert m.model_id_for(Tier.CHEAP) == "claude-haiku-4-5"
+    assert m.model_id_for(Tier.FRONTIER) == "claude-opus-4-8"
+
+
+def test_env_model_preferred_over_frontier(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    monkeypatch.setenv("ANTHROPIC_MODEL", "opus")
+    monkeypatch.setenv("ANTHROPIC_FRONTIER_MODEL", "sonnet")
+    messages = _FakeMessages()
+    fake = SimpleNamespace(messages=messages, created=[], api_key=None)
+    _install_fake_anthropic(monkeypatch, fake)
+
+    m = AnthropicModel()
+    assert m.frontier_model_id == "claude-opus-5"
+
+
+def test_set_model_id_alias(monkeypatch):
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+    messages = _FakeMessages()
+    fake = SimpleNamespace(messages=messages, created=[], api_key=None)
+    _install_fake_anthropic(monkeypatch, fake)
+
+    m = AnthropicModel()
+    assert m.set_model_id(Tier.FRONTIER, "fable") == "claude-fable-5"
+    assert m.frontier_model_id == "claude-fable-5"
+
 
 
 @pytest.mark.skipif(not os.getenv("ANTHROPIC_API_KEY"), reason="no ANTHROPIC_API_KEY")

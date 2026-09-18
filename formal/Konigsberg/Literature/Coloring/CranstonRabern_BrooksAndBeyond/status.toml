@@ -1,0 +1,19 @@
+[entry]
+name = "CranstonRabern_BrooksAndBeyond"
+citation = "D. W. Cranston, L. Rabern, Brooks' Theorem and Beyond, J. Graph Theory 80 (2015) 199–225; arXiv:1403.0479"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_BrooksAndBeyond.brooks_max3"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_BrooksAndBeyond.list_brooks_max3"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_BrooksAndBeyond.independence_when_K_delta_free"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

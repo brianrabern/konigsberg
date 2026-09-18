@@ -36,12 +36,26 @@ def complete_palette(graph: Graph, k: int) -> int:
     return k * graph.n
 
 
-def _cardinality_clauses(n: int, palette: int, k: int, symmetry: bool):
-    """Exactly-k-colors-per-vertex, plus optional color-symmetry breaking.
+def complete_palette_f(graph: Graph, f: dict[int, int]) -> int:
+    """Palette size that makes a None result a complete f-choosability decision."""
+    if graph.n == 0:
+        return 0
+    return max(f.values()) * graph.n
+
+
+def _cardinality_clauses(n: int, palette: int, list_sizes: list[int], symmetry: bool):
+    """Exactly list_sizes[v] colors per vertex v, plus optional symmetry breaking.
 
     Returns (clauses, var) where var(v, c) is the id of "color c is in L[v]".
     """
     from pysat.card import CardEnc, EncType
+
+    if len(list_sizes) != n:
+        raise ValueError(f"expected {n} list sizes, got {len(list_sizes)}")
+    if any(sz < 0 for sz in list_sizes):
+        raise ValueError("list sizes must be nonnegative")
+    if palette < max(list_sizes, default=0):
+        raise ValueError("palette smaller than some list size")
 
     def var(v: int, c: int) -> int:
         return v * palette + c + 1
@@ -50,7 +64,10 @@ def _cardinality_clauses(n: int, palette: int, k: int, symmetry: bool):
     cnf: list[list[int]] = []
     for v in range(n):
         enc = CardEnc.equals(
-            [var(v, c) for c in range(palette)], k, top_id=top, encoding=EncType.seqcounter
+            [var(v, c) for c in range(palette)],
+            list_sizes[v],
+            top_id=top,
+            encoding=EncType.seqcounter,
         )
         cnf += enc.clauses
         top = max(top, enc.nv)
@@ -78,6 +95,47 @@ def _cardinality_clauses(n: int, palette: int, k: int, symmetry: bool):
     return cnf, var
 
 
+def find_bad_list_f(
+    graph: Graph,
+    f: dict[int, int],
+    *,
+    palette: int | None = None,
+    symmetry: bool = True,
+) -> list[set[int]] | None:
+    """An f-list assignment G cannot be colored from, or None if none exists.
+
+    `f` maps each vertex to its required list size (worst-case slack). palette
+    defaults to max(f)*n (complete). A returned list is an independently
+    re-checkable certificate; None means no bad list up to `palette` colors.
+    """
+    n = graph.n
+    if n == 0:
+        return None
+    if set(f) != set(range(n)):
+        raise ValueError(f"f must cover vertices 0..{n - 1}, got {sorted(f)}")
+    if any(fv < 1 for fv in f.values()):
+        raise ValueError("every f(v) must be >= 1 for find_bad_list_f")
+    if palette is None:
+        palette = complete_palette_f(graph, f)
+    max_f = max(f.values())
+    if palette < max_f:
+        raise ValueError(f"palette ({palette}) must be >= max f ({max_f})")
+
+    from pysat.solvers import Minisat22
+
+    list_sizes = [f[v] for v in range(n)]
+    cnf, var = _cardinality_clauses(n, palette, list_sizes, symmetry)
+    with Minisat22(bootstrap_with=cnf) as solver:
+        while solver.solve():
+            model = set(solver.get_model())
+            lists = [{c for c in range(palette) if var(v, c) in model} for v in range(n)]
+            coloring = find_list_coloring(graph, lists)
+            if coloring is None:
+                return lists
+            solver.add_clause([-var(v, coloring[v]) for v in range(n)])
+    return None
+
+
 def find_bad_list(
     graph: Graph, k: int = DEFAULT_K, *, palette: int | None = None, symmetry: bool = True
 ) -> list[set[int]] | None:
@@ -90,33 +148,23 @@ def find_bad_list(
     if k < 1:
         raise ValueError(f"k must be >= 1, got {k}")
     if n == 0:
-        return None  # vacuously choosable
-    if palette is None:
-        palette = complete_palette(graph, k)
-    if palette < k:
-        raise ValueError(f"palette ({palette}) must be >= k ({k})")
-
-    from pysat.solvers import Minisat22
-
-    cnf, var = _cardinality_clauses(n, palette, k, symmetry)
-    with Minisat22(bootstrap_with=cnf) as solver:
-        while solver.solve():
-            model = set(solver.get_model())
-            lists = [{c for c in range(palette) if var(v, c) in model} for v in range(n)]
-            coloring = find_list_coloring(graph, lists)
-            if coloring is None:
-                return lists  # certificate: G is not k-choosable
-            # Block every assignment this same coloring would also handle.
-            solver.add_clause([-var(v, coloring[v]) for v in range(n)])
-    return None
+        return None
+    return find_bad_list_f(
+        graph, {v: k for v in range(n)}, palette=palette, symmetry=symmetry
+    )
 
 
 def verify_bad_list(graph: Graph, lists: list[set[int]], k: int) -> bool:
     """Re-check a certificate from scratch, independent of the SAT search:
     every list has size k and G genuinely has no coloring from `lists`."""
+    return verify_bad_list_f(graph, lists, {v: k for v in range(graph.n)})
+
+
+def verify_bad_list_f(graph: Graph, lists: list[set[int]], f: dict[int, int]) -> bool:
+    """Re-check an f-list certificate: sizes match f and G has no coloring."""
     if len(lists) != graph.n:
         return False
-    if any(len(s) != k for s in lists):
+    if any(len(s) != f[v] for v, s in enumerate(lists)):
         return False
     return find_list_coloring(graph, [set(s) for s in lists]) is None
 

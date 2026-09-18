@@ -71,6 +71,9 @@ class Provenance:
     axioms: tuple[str, ...] = ()            # from #print axioms, when LEAN_KERNEL
     tool: str = ""                          # which tool minted this
     at: str = field(default_factory=_utcnow)
+    # True iff lean_prove(durable=True): snippet elaborated against a fresh corpus
+    # env (promotable). False/default: may depend on session-only declarations.
+    durable: bool = False
 
     @property
     def nonstandard_axioms(self) -> tuple[str, ...]:
@@ -105,6 +108,8 @@ class Claim:
         extra = f" [{p.bound}]" if p.bound else ""
         if p.nonstandard_axioms:
             extra += f" axioms={{{', '.join(p.nonstandard_axioms)}}}"
+        if p.trust_root is TrustRoot.LEAN_KERNEL and p.evidence_kind is EvidenceKind.PROOF:
+            extra += " [durable]" if p.durable else " [session-only]"
         return f"[{tag}]{extra} {self.statement}"
 
 
@@ -115,7 +120,13 @@ class Claim:
 # upgrading status" means in practice.
 
 
-def mint_lean_proof(statement: str, axioms: tuple[str, ...], *, tool: str) -> Claim:
+def mint_lean_proof(
+    statement: str,
+    axioms: tuple[str, ...],
+    *,
+    tool: str,
+    durable: bool = False,
+) -> Claim:
     return Claim(
         statement,
         Provenance(
@@ -124,6 +135,7 @@ def mint_lean_proof(statement: str, axioms: tuple[str, ...], *, tool: str) -> Cl
             well_formed=True,
             axioms=axioms,
             tool=tool,
+            durable=durable,
         ),
     )
 

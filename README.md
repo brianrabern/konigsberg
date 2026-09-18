@@ -69,6 +69,12 @@ say what the docstring claims.
 | `stated` | — | Statement typechecks. Says nothing about truth |
 | `conjectured` | model | Unverified LLM output |
 
+## Run the Borodin–Kostochka hunt on a local LLM
+
+Clone-to-campaign walkthrough (llama.cpp / Qwen, no cloud key), including
+Lean/mathlib setup, `.env`, a 20-round smoke, and an unattended `--forever`
+soak: **[`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md)**.
+
 ## Quickstart
 
 Prereqs: [`elan`](https://github.com/leanprover/elan) (Lean toolchain manager),
@@ -87,29 +93,50 @@ cd ..
 make deps                   # or: uv run python scripts/ensure_deps.py --yes
 
 # Interactive session (Claude-Code-shaped REPL; ledger persists under ~/.konigsberg/sessions/)
-uv run konigsberg                    # interactive
-uv run konigsberg --task "…"         # headless one-shot
-uv run konigsberg --continue         # resume latest session
-# Real model when ANTHROPIC_API_KEY is set; scripted fake otherwise.
+uv run konig                         # short alias
+uv run konigsberg                    # same
+uv run konig --task "…"              # headless one-shot
+uv run konig --until-proved --task "Prove …"   # autonomous hunt until lean_prove
+uv run konig --forever                         # BK campaign: until proved/disproved
+uv run konig --continue              # resume latest session
+# Live model: Anthropic (ANTHROPIC_API_KEY) or local llama.cpp
+# (KONIGSBERG_PROVIDER=local + OPENAI_BASE_URL). Repo-root `.env` is auto-loaded;
+# scripted fake otherwise. Chat model: ANTHROPIC_MODEL=opus 4.8, or
+# KONIGSBERG_MODEL=<gguf-name> locally (or /model in-session).
+# Local BK hunt (clone → llama-server → --forever): docs/LOCAL_BK_HUNT.md
+# Hunt + locked lemmas: see docs/handoff/HUNT_AND_LEMMAS.md.
 
 # Trust gates (run what CI runs)
 make gates
 # equivalent:
-#   python ci/self_test_audit.py
-#   python ci/check_status.py formal
-#   python ci/check_no_sorry.py formal
-#   python ci/check_axioms.py formal
-#   python ci/check_imports.py formal
-#   python ci/check_conventions.py formal
+#   uv run python ci/self_test_audit.py
+#   uv run python ci/referee_self_test.py
+#   uv run python ci/reduction_self_test.py
+#   uv run python ci/discharging_self_test.py
+#   uv run python ci/check_status.py formal
+#   uv run python ci/check_no_sorry.py formal
+#   uv run python ci/check_axioms.py formal
+#   uv run python ci/check_imports.py formal
+#   uv run python ci/check_conventions.py formal
 ```
 
 ## Status
 
-Scaffold. See `PLAN.md`-tracked milestones. The trust spine (`ci/`, `ledger.py`)
-is built before corpus content by design — retrofitting trust onto content never
-fully works.
+Working three-tier instrument (Lean library + empirical solvers + ledger-backed
+harness). `--forever` is the Borodin–Kostochka campaign: it runs until a durable
+kernel `lean_prove` of `borodinKostochka` lands, a certified Δ ≥ 9 counterexample
+lands, or you stop it. Model prose never counts. See
+[`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md) to clone and hunt on a local
+LLM. `PLAN.md` tracks remaining milestones; “Scaffold” is no longer the state
+of the tree.
+
+**What to read:** hunt = `docs/LOCAL_BK_HUNT.md`; trust = `docs/TRUST.md`.
+`docs/handoff/` is a lab notebook — ignore it unless you are debugging a
+specific ingest. `vendor/` is a **test oracle** for differential tests; do
+not build it to run the hunt (those tests skip if the oracle is missing).
 
 ## License
 
-Apache 2.0, pending resolution of reuse terms for ported oracle algorithms.
-See `LICENSE`.
+Source-available for private research. **Not Apache 2.0 yet** — reuse terms
+for the Rabern choosability port must be resolved in writing before a public
+OSI release. See `LICENSE`.

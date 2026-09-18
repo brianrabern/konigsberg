@@ -13,13 +13,25 @@ Trust invariant: only a tool-minted ``Claim`` enters the ledger; an
 """
 from __future__ import annotations
 
-from collections.abc import Iterator
+import re
+from collections.abc import Callable, Iterator
 from dataclasses import dataclass, field
 
 from pydantic import ValidationError
 
+from .campaign import (
+    REDISCOVERY_BANNER,
+    STAIRCASE_MARK,
+    extract_core,
+    forbidden_cores,
+    format_campaign_snapshot,
+    note_stagnation,
+    stagnation_text,
+)
+from .compaction import CompactionConfig, compact, should_compact
 from .grounding import format_grounded_answer
-from .ledger import Claim, Ledger
+from .ledger import Claim, EvidenceKind, Ledger, TrustRoot
+from .lemmas import LockedLemma
 from .models import (
     AssistantText,
     Model,
@@ -36,6 +48,11 @@ from .tools.registry import ToolRegistry
 @dataclass
 class AgentConfig:
     max_steps: int = 40
+    hunt: bool = False  # do not stop on prose; continue until lean_prove
+    hunt_max_rounds: int = 200  # ≤0 means unlimited (forever campaign)
+    hunt_require_durable: bool = False
+    hunt_forever: bool = False  # campaign: stop only if BK is proved or disproved
+    compaction: CompactionConfig | None = None
 
 
 @dataclass
@@ -103,6 +120,13 @@ class Interrupted:
     """Emitted when ``request_interrupt`` was set; session left consistent."""
 
 
+@dataclass(frozen=True)
+class HuntContinued:
+    """Hunt mode: model tried to stop in prose without a lean_prove hit."""
+
+    preview: str = ""
+
+
 AgentEvent = (
     ModelThinking
     | ToolCallProposed
@@ -110,7 +134,122 @@ AgentEvent = (
     | ClaimMinted
     | AssistantFinal
     | Interrupted
+    | HuntContinued
 )
+
+HUNT_CONTINUE = (
+    "HUNT MODE: that was commentary, not a kernel proof. Continue. "
+    "Call lean_prove on a lemma or theorem. Read prior locks with lemma_list / "
+    "lemma_read and reuse them. Do not finish in prose until lean_prove succeeds."
+)
+
+HUNT_KICKOFF = (
+    "HUNT MODE: keep going until a lemma or theorem is kernel-checked via "
+    "lean_prove. Lock proofs with lean_prove; reread them with lemma_list / "
+    "lemma_read. Do not stop in prose until that proof exists."
+)
+
+BK_CAMPAIGN_TASK = (
+    "Campaign: prove or disprove the Borodin–Kostochka conjecture "
+    "(every graph with Δ ≥ 9 has χ ≤ max{Δ−1, ω}). "
+    "Build on Rabern's results already in this corpus — RabernBook list "
+    "bounds, BasicIrreducible, kernel-perfect list coloring, "
+    "4-list-critical / Cranston–Rabern edge bounds, Kierstead–Rabern "
+    "Ore-Vizing, hitting maximum cliques, and the reducible-configuration "
+    "/ f-choosability line — rather than starting from scratch. "
+    "literature_search Rabern first; pin statements; extend them. "
+    "It is open — never claim it is settled in prose. You prove it with a "
+    "durable lean_prove of borodinKostochka (kernel-checked χ ≤ max{Δ−1, ω} "
+    "for Δ ≥ 9). A certified bk_predicate VIOLATES disproves it. Otherwise "
+    "keep making kernel-checked and certificate-checked increments."
+)
+
+FOREVER_KICKOFF = """\
+FOREVER CAMPAIGN — Borodin–Kostochka. Do not stop in prose.
+Halt only when the ledger settles the conjecture:
+  proved    = durable lean_prove of borodinKostochka (kernel-checked
+              χ ≤ max{Δ−1, ω} for Δ ≥ 9). That Claim IS a proof.
+  disproved = bk_predicate VIOLATES (certified Δ≥9 counterexample).
+A durable proof of borodinKostochka_at_nine is a Δ=9 milestone, not halt.
+The corpus statement is
+  Konigsberg.Literature.Coloring.BorodinKostochka.borodinKostochka
+(stated, sorry). You cannot overwrite the imported decl; a settlement
+proof is a complete theorem whose lean_name contains BorodinKostochka
+and whose type is the Δ ≥ 9 statement (not the = 9 slice).
+Ordinary lemmas lock and the campaign continues. Ctrl-C also stops.
+Build on Rabern, do not restart from Brooks: literature_search Rabern /
+CranstonRabern / KiersteadRabern / RabernBook before inventing lemmas.
+Extend those results into the H_BK reducible-configuration program.
+Use the full instrument on every circuit, not a subset:
+- Corpus: literature_search, lean_search. arxiv_search for leads only.
+  Pin CranstonRabern_BKEquivalentConjectures (f-choosable joins / K₃∗Ē₆),
+  CranstonRabern_ChiEqDeltaBigCliques, CranstonRabern_BrooksAndBeyond
+  (χ, χ_ℓ ≤ max{3, ω, Δ}; independence lemma), Rabern_HittingMaxCliques, the
+  dissertation citation, claw-free BK, doubly-critical-edge BK.
+- Bridge: BK.reducible_of_fChoosable is formalized in Literature — do not re-prove it.
+- Reducible configs: reducible_configuration under H_BK (sufficient-only).
+- Discharging: discharging_unavoidable (v1 D=9). You propose μ and rules; the tool verifies.
+  UNAVOIDABLE is sufficient-only; a MISS returns a surviving neighborhood. Closure lemma
+  BK.reducible_and_unavoidable_imp_no_counterexample. Forbidden cores must already be on the ledger.
+- Empirical BK: bk_predicate, bk_search (refutation only), choosability_refute, alon_tarsi, list_critical, decide_colorable, chromatic_number.
+- Graphs: make_graph, blow_up, mycielskian, clique_number, max_degree, independent_hitting_set.
+- Lean: lean_typecheck_statement, lean_check, lean_prove, lemma_list, lemma_read.
+- Staircase: campaign_status — locked lemmas, known cores, discharging closed/not, the NEXT increment.
+Lock every successful lean_prove and reuse it. A finite sweep never proves BK.
+Progress = locked lemmas + new forbidden cores + a closing discharging argument + repaired statements + kernel subproofs.
+Staircase (do the first incomplete step; one increment per circuit):
+  1. Re-derive Rabern's seed configs (campaign_status lists seeds k/N), then a new core.
+  2. Propose charge+rules; run discharging_unavoidable against ledger 𝒞 (D=9). On a MISS, forbid the surviving neighborhood or repair the rules.
+  3. Durable lean_prove of BK.reducible_and_unavoidable_imp_no_counterexample, then borodinKostochka_at_nine (Δ=9 milestone, not halt).
+  4. Durable lean_prove of borodinKostochka (Δ ≥ 9).
+Call campaign_status after compaction. Do not retest listed cores. Exhaust the
+Rabern catalogue before inventing configurations. Class-restricted BK is reference, not a target.
+If the stair freezes (same |𝒞|, same durable lemmas, same discharging miss),
+REFORMULATE: trade BK for an a-priori-weaker equivalent
+(CranstonRabern_BKEquivalentConjectures) — that is where choosability bites.
+"""
+
+FOREVER_CONTINUE = (
+    "CAMPAIGN: commentary is not a stopping point. Borodin–Kostochka is still open. "
+    "Stop only on a durable kernel proof of borodinKostochka (Δ ≥ 9) or a "
+    "bk_predicate VIOLATES. borodinKostochka_at_nine is a Δ=9 milestone, not halt. "
+    "That kernel Claim of the general statement is a proof of the conjecture. "
+    "Build on Rabern (literature_search); do not "
+    "rediscover named results. Take the NEXT stair below — not a core already "
+    "listed. Call campaign_status if the stair is missing. Continue."
+)
+
+CAMPAIGN_PROVED = (
+    "Campaign stopped: Borodin–Kostochka PROVED "
+    "(durable kernel proof of the conjecture)."
+)
+CAMPAIGN_DISPROVED = (
+    "Campaign stopped: Borodin–Kostochka DISPROVED "
+    "(certified counterexample, Δ ≥ 9)."
+)
+
+
+def _hunt_kickoff_text(config: AgentConfig) -> str:
+    return FOREVER_KICKOFF if config.hunt_forever else HUNT_KICKOFF
+
+
+def _hunt_continue_text(
+    config: AgentConfig,
+    session: Session | None = None,
+    *,
+    survivors: tuple[str, ...] = (),
+    stagnation: str = "",
+) -> str:
+    if not config.hunt_forever:
+        return HUNT_CONTINUE
+    if session is None:
+        return FOREVER_CONTINUE
+    snap = format_campaign_snapshot(
+        session.ledger.claims(), session.notebook.lemmas, survivors=survivors
+    )
+    if stagnation:
+        return f"{FOREVER_CONTINUE}\n\n{snap}\n{stagnation}"
+    return f"{FOREVER_CONTINUE}\n\n{snap}"
 
 
 def _render_result(result: object) -> str:
@@ -144,6 +283,239 @@ def _literature_hits_from_result(result: object) -> list[dict] | None:
     return None
 
 
+def _arxiv_hits_from_result(result: object) -> list[dict] | None:
+    """Detect arxiv_search hit dicts (bibliographic; not Claims)."""
+    if not isinstance(result, list) or not result:
+        return None
+    if all(
+        isinstance(d, dict)
+        and d.get("source") == "arxiv"
+        and "arxiv_id" in d
+        and "title" in d
+        for d in result
+    ):
+        return list(result)
+    return None
+
+
+def _is_hunt_proof(claim: Claim, *, require_durable: bool) -> bool:
+    """True when this Claim is the hunt stop condition (lean_prove kernel proof)."""
+    p = claim.provenance
+    if p.tool != "lean_prove":
+        return False
+    if p.trust_root is not TrustRoot.LEAN_KERNEL:
+        return False
+    if p.evidence_kind is not EvidenceKind.PROOF:
+        return False
+    return p.durable if require_durable else True
+
+
+def _normalized_ident(s: str) -> str:
+    return re.sub(r"[^a-z0-9]+", "", s.lower())
+
+
+def _is_bk_conjecture_name(name: str) -> bool:
+    """True for names that denote the conjecture itself, not a BK-adjacent lemma.
+
+    Slice results (``borodinKostochka_at_nine`` and similar) are deliberately
+    excluded: a D=9 proof must never flip the general campaign settlement.
+    """
+    key = _normalized_ident(name)
+    if "reducible" in key or "fchoosable" in key:
+        return False
+    if "atnine" in key or re.search(r"at\d+", key):
+        return False
+    if "dischargingclosure" in key:
+        return False
+    return "borodinkostochka" in key or key in {
+        "bkconjecture",
+        "borodinkostochkaconjecture",
+    }
+
+
+def _snippet_looks_like_bk(snippet: str) -> bool:
+    """Cheap guard against `theorem BorodinKostochka : True := trivial`.
+
+    A keyword heuristic only — NOT sufficient at the halting boundary. Used as a
+    fallback for callers with no Lean REPL (unit tests); the live campaign gates
+    settlement on a kernel type-equality check instead (see ``_bk_settlement_snippet``
+    / ``Agent._verify_bk_settlement``).
+    """
+    src = snippet.lower()
+    has_nine = bool(re.search(r"(≥|>=|ge\s)\s*9|\b9\s*(≤|<=|le\s)", src))
+    has_delta = any(t in src for t in ("maxdegree", "max_degree", "delta", "Δ", "δ"))
+    has_chi = any(t in src for t in ("chromatic", "colorable"))
+    has_omega = any(t in src for t in ("clique", "omega", "ω"))
+    return has_nine and has_delta and has_chi and has_omega
+
+
+# Fully-qualified corpus statement whose proof settles the campaign.
+BK_CORPUS_DECL = "Konigsberg.Literature.Coloring.BorodinKostochka.borodinKostochka"
+BK_AT_NINE_DECL = (
+    "Konigsberg.Literature.Coloring.BK_DischargingClosure.borodinKostochka_at_nine"
+)
+
+
+def _bk_settlement_snippet(proved_name: str) -> str:
+    """Kernel proof-irrelevance check that ``proved_name`` proves EXACTLY the
+    corpus Borodin–Kostochka statement.
+
+    ``Eq`` forces both sides to share a type, so if ``proved_name``'s proposition
+    differs from the corpus statement the ``example`` fails to elaborate; if it
+    matches, Prop proof-irrelevance closes it by ``rfl``. This is what makes a
+    ``PROVED`` halt trustworthy — a keyword match on the snippet is not. The
+    check is intentionally exact (defeq): a genuine proof stated in a different
+    but equivalent form is a *false negative* (campaign keeps hunting, the
+    durable BK-named Claim sits on the ledger for a human), which is the safe
+    direction. A false positive is the one outcome we must never produce.
+    """
+    return f"example : @{BK_CORPUS_DECL} = @{proved_name} := rfl"
+
+
+def _bk_at_nine_settlement_snippet(proved_name: str) -> str:
+    """Kernel proof-irrelevance check against the D=9 corpus statement.
+
+    Distinct from ``_bk_settlement_snippet``: defeq to ``borodinKostochka_at_nine``
+    is a Δ=9 milestone, never general-campaign settlement.
+    """
+    return f"example : @{BK_AT_NINE_DECL} = @{proved_name} := rfl"
+
+
+def _is_bk_at_nine_name(name: str) -> bool:
+    return "borodinkostochkaatnine" in _normalized_ident(name)
+
+
+def _snippet_looks_like_bk_at_nine(snippet: str) -> bool:
+    """Heuristic for callers with no REPL. Not the live-campaign gate."""
+    src = snippet.lower()
+    has_eq_nine = bool(re.search(r"maxdegree\s*=\s*9", src))
+    has_ge_nine = bool(re.search(r"(≥|>=|ge\s)\s*9|\b9\s*(≤|<=|le\s)", src))
+    if has_ge_nine or not has_eq_nine:
+        return False
+    has_chi = "colorable" in src
+    has_omega = any(t in src for t in ("clique", "omega", "ω"))
+    return has_chi and has_omega
+
+
+def campaign_settlement(
+    claim: Claim,
+    call: ToolCall | None = None,
+    *,
+    verify_type: Callable[[str], bool] | None = None,
+) -> str | None:
+    """Return ``proved`` / ``disproved`` if this Claim settles Borodin–Kostochka.
+
+    Disproof is a ``bk_predicate`` certificate that the graph VIOLATES under
+    Δ ≥ 9. Proof is a *durable*, axiom-clean kernel ``lean_prove`` whose target
+    is named for the conjecture AND whose type is verified equal to the corpus
+    BK statement.
+
+    ``verify_type(lean_name) -> bool`` is the kernel check (supplied by the live
+    campaign via ``Agent._verify_bk_settlement``). When it is ``None`` — a caller
+    with no Lean REPL, e.g. a unit test — we fall back to the cheap
+    ``_snippet_looks_like_bk`` heuristic, which is NOT trustworthy on its own and
+    must never gate a real campaign. A ``PROVED`` halt in production requires the
+    kernel check to pass; anything less returns ``None`` (keep hunting).
+    """
+    p = claim.provenance
+    if (
+        p.tool.startswith("bk_predicate")
+        and p.trust_root is TrustRoot.CERTIFICATE
+        and "VIOLATES BK" in claim.statement
+    ):
+        return "disproved"
+    if not (
+        p.tool == "lean_prove"
+        and p.trust_root is TrustRoot.LEAN_KERNEL
+        and p.evidence_kind is EvidenceKind.PROOF
+        and p.durable
+    ):
+        return None
+    # A settlement proof must be axiom-clean: a "proof" routed through the corpus
+    # `sorry` decl (or via native_decide) carries a nonstandard axiom and is not BK.
+    if p.nonstandard_axioms:
+        return None
+    name = claim.statement
+    snippet = ""
+    if call is not None:
+        name = str(call.args.get("lean_name") or claim.statement)
+        snippet = str(call.args.get("snippet") or "")
+    if not _is_bk_conjecture_name(name):
+        return None
+    # Halting boundary: prefer the kernel type-equality check over any heuristic.
+    if verify_type is not None:
+        return "proved" if verify_type(name) else None
+    if not _snippet_looks_like_bk(snippet):
+        return None
+    return "proved"
+
+
+def settles_bk_at(
+    claim: Claim,
+    call: ToolCall | None = None,
+    *,
+    D: int = 9,
+    verify_type: Callable[[str], bool] | None = None,
+) -> int | None:
+    """Return ``D`` if this Claim is a kernel proof of BK at that Δ, else None.
+
+    v1 recognizes only D=9, via kernel defeq to ``borodinKostochka_at_nine``.
+    This is a milestone recognizer — it must never be wired as
+    ``campaign_settlement`` ``proved``. A D=9 result does not halt ``--forever``.
+    """
+    if D != 9:
+        return None
+    p = claim.provenance
+    if not (
+        p.tool == "lean_prove"
+        and p.trust_root is TrustRoot.LEAN_KERNEL
+        and p.evidence_kind is EvidenceKind.PROOF
+        and p.durable
+    ):
+        return None
+    if p.nonstandard_axioms:
+        return None
+    name = claim.statement
+    snippet = ""
+    if call is not None:
+        name = str(call.args.get("lean_name") or claim.statement)
+        snippet = str(call.args.get("snippet") or "")
+    if not _is_bk_at_nine_name(name):
+        return None
+    if verify_type is not None:
+        return 9 if verify_type(name) else None
+    if not _snippet_looks_like_bk_at_nine(snippet):
+        return None
+    return 9
+
+
+def _hunt_stop_commentary(settlement: str | None) -> str:
+    if settlement == "disproved":
+        return CAMPAIGN_DISPROVED
+    if settlement == "proved":
+        return CAMPAIGN_PROVED
+    return "Hunt stopped: kernel-checked proof locked."
+
+
+def _lock_from_prove(
+    session: Session, call: ToolCall, claim: Claim, store: SessionStore | None
+) -> None:
+    snippet = str(call.args.get("snippet") or "")
+    name = str(call.args.get("lean_name") or claim.statement)
+    if not snippet.strip() or not name:
+        return
+    lemma = LockedLemma(
+        lean_name=name,
+        snippet=snippet,
+        durable=bool(claim.provenance.durable),
+        axioms=tuple(claim.provenance.axioms),
+    )
+    if store is not None:
+        store.log_lemma(session, lemma)
+    else:
+        session.notebook.lock(lemma)
+
+
 def _seed_user_message(task: str) -> UserMsg:
     return UserMsg(
         f"{task}\n\n"
@@ -163,6 +535,31 @@ class Agent:
         self.config = config or AgentConfig()
         self._interrupt = False
         self._rounds = 0
+
+    def _verify_bk_settlement(self, proved_name: str) -> bool:
+        """Kernel-check that ``proved_name`` proves the corpus BK statement.
+
+        Fail-closed: a missing ``lean_check`` tool (no live REPL), any dispatch
+        error, or a non-ok elaboration all mean 'not settled' — never a false
+        PROVED. This is the trust boundary for the campaign's halt.
+        """
+        try:
+            state = self.registry.dispatch(
+                "lean_check", {"snippet": _bk_settlement_snippet(proved_name)}
+            )
+        except Exception:  # noqa: BLE001 — any failure ⇒ not settled (fail-closed)
+            return False
+        return bool(getattr(state, "ok", False))
+
+    def _verify_bk_at_nine(self, proved_name: str) -> bool:
+        """Kernel-check that ``proved_name`` proves BK at Δ=9, not the general conjecture."""
+        try:
+            state = self.registry.dispatch(
+                "lean_check", {"snippet": _bk_at_nine_settlement_snippet(proved_name)}
+            )
+        except Exception:  # noqa: BLE001 — any failure ⇒ not a D=9 milestone
+            return False
+        return bool(getattr(state, "ok", False))
 
     def request_interrupt(self) -> None:
         """Ask ``step`` to halt at the next event boundary (Ctrl-C path)."""
@@ -189,6 +586,61 @@ class Agent:
             session.ledger.record(claim)
             session.touch()
 
+    def _bind_campaign(self, session: Session) -> None:
+        bind = getattr(self.registry, "campaign_bind", None)
+        if bind is not None:
+            if bind.ledger is not session.ledger:
+                bind.progress_fingerprint = None
+                bind.stagnation_streak = 0
+            bind.ledger = session.ledger
+            bind.notebook = session.notebook
+
+    def _discharge_survivors(self) -> tuple[str, ...]:
+        bind = getattr(self.registry, "campaign_bind", None)
+        if bind is None:
+            return ()
+        return tuple(getattr(bind, "last_discharge_survivors", ()) or ())
+
+    def _stagnation_note(self) -> str:
+        bind = getattr(self.registry, "campaign_bind", None)
+        if bind is None:
+            return ""
+        return stagnation_text(bind)
+
+    def _staircase_snapshot(self, session: Session, *, tick: bool = False) -> str:
+        claims = session.ledger.claims()
+        lemmas = session.notebook.lemmas
+        survivors = self._discharge_survivors()
+        snap = format_campaign_snapshot(claims, lemmas, survivors=survivors)
+        bind = getattr(self.registry, "campaign_bind", None)
+        extra = ""
+        if bind is not None:
+            extra = (
+                note_stagnation(bind, claims, lemmas, survivors=survivors)
+                if tick
+                else stagnation_text(bind)
+            )
+        return f"{snap}\n{extra}" if extra else snap
+
+    def _maybe_inject_staircase(
+        self,
+        session: Session,
+        store: SessionStore | None,
+        *,
+        force: bool = False,
+    ) -> None:
+        """Keep the next increment in chat after compaction / long tool chains."""
+        if not self.config.hunt_forever:
+            return
+        if not force and (self._rounds == 1 or self._rounds % 5 != 1):
+            return
+        if session.history:
+            last = session.history[-1]
+            if isinstance(last, UserMsg) and STAIRCASE_MARK in last.text:
+                return
+        snap = self._staircase_snapshot(session, tick=True)
+        self._persist_item(session, UserMsg(snap), store)
+
     def step(
         self,
         session: Session,
@@ -196,13 +648,13 @@ class Agent:
         store: SessionStore | None = None,
         tier: Tier = Tier.FRONTIER,
     ) -> Iterator[AgentEvent]:
-        """Drive until AssistantFinal, interrupt, or max_steps.
+        """Drive until AssistantFinal, interrupt, or the round cap.
 
-        Re-assembles context from ``session.history`` each model call. Yields
-        events as tool calls/results/claims happen so the REPL can render live.
-
-        # Mid-tool-call injection (Claude Code async dual-buffer) deferred — v1
-        # steering is interrupt-at-event-boundary + turn-boundary user messages.
+        Chat mode (default): stop on the first prose turn, or ``max_steps``.
+        Hunt mode: ignore prose finals until a ``lean_prove`` kernel proof, or
+        ``hunt_max_rounds`` (≤0 = unlimited). Forever hunt ignores ordinary
+        lemmas and stops only if the target conjecture is proved or disproved
+        (or interrupt / cap).
         """
         self.clear_interrupt()
         self._rounds = 0
@@ -211,17 +663,51 @@ class Agent:
         turn_failures: list[str] = []
         turn_refs: list[dict] = []
         turn_definitions: list[str] = []
+        hunt_hit = False
+        hunt_settlement: str | None = None
 
-        for _ in range(self.config.max_steps):
+        while True:
             if self._interrupt:
                 yield Interrupted()
                 return
+            if self.config.hunt:
+                cap = self.config.hunt_max_rounds
+                if cap > 0 and self._rounds >= cap:
+                    return
+            elif self._rounds >= self.config.max_steps:
+                return
 
             self._rounds += 1
+            self._bind_campaign(session)
+            compacted = False
+            cfg = self.config.compaction
+            if self.config.hunt and cfg is not None and should_compact(session, cfg):
+                compact(session, self.model, config=cfg, store=store)
+                compacted = True
+            self._maybe_inject_staircase(session, store, force=compacted)
             yield ModelThinking("Thinking…")
             turn = self.model.respond(session.history, tools, tier=tier)
 
             if isinstance(turn, AssistantText):
+                keep_hunting = self.config.hunt and (
+                    self.config.hunt_forever or not hunt_hit
+                )
+                if keep_hunting:
+                    self._persist_item(session, turn, store)
+                    yield HuntContinued(preview=turn.text[:200])
+                    self._persist_item(
+                        session,
+                        UserMsg(
+                            _hunt_continue_text(
+                                self.config,
+                                session,
+                                survivors=self._discharge_survivors(),
+                                stagnation=self._stagnation_note(),
+                            )
+                        ),
+                        store,
+                    )
+                    continue
                 self._persist_item(session, turn, store)
                 grounded = format_grounded_answer(
                     commentary=turn.text,
@@ -309,6 +795,7 @@ class Agent:
 
                 claims = _claims_from_result(result)
                 if claims is not None:
+                    prior_cores = forbidden_cores(session.ledger.claims())
                     for claim in claims:
                         self._persist_claim(session, claim, store)
                         turn_claims.append(claim)
@@ -317,15 +804,39 @@ class Agent:
                         if len(claims) == 1
                         else "\n".join(c.render() for c in claims)
                     )
+                    if call.name == "reducible_configuration":
+                        core = extract_core(claims[0].statement)
+                        if core is not None and core in prior_cores:
+                            rendered = REDISCOVERY_BANNER + rendered
                     tr = ToolResultMsg(id=call.id, content=rendered)
                     self._persist_item(session, tr, store)
                     yield ToolResult(call=call, content=rendered, is_error=False)
                     for claim in claims:
                         yield ClaimMinted(claim)
+                        if call.name == "lean_prove":
+                            _lock_from_prove(session, call, claim, store)
+                        if not self.config.hunt:
+                            continue
+                        if self.config.hunt_forever:
+                            kind = campaign_settlement(
+                                claim, call, verify_type=self._verify_bk_settlement
+                            )
+                            if kind is not None:
+                                hunt_hit = True
+                                hunt_settlement = kind
+                        elif call.name == "lean_prove" and _is_hunt_proof(
+                            claim,
+                            require_durable=self.config.hunt_require_durable,
+                        ):
+                            hunt_hit = True
                 else:
                     lit_hits = _literature_hits_from_result(result)
                     if lit_hits is not None:
                         turn_refs.extend(lit_hits)
+                    else:
+                        ax_hits = _arxiv_hits_from_result(result)
+                        if ax_hits is not None:
+                            turn_refs.extend(ax_hits)
                     rendered = _render_result(result)
                     tr = ToolResultMsg(id=call.id, content=rendered)
                     self._persist_item(session, tr, store)
@@ -343,7 +854,26 @@ class Agent:
                     yield Interrupted()
                     return
 
-        # Hit max_steps without a final text turn.
+            if self.config.hunt and hunt_hit:
+                commentary = _hunt_stop_commentary(hunt_settlement)
+                grounded = format_grounded_answer(
+                    commentary=commentary,
+                    claims=turn_claims,
+                    failures=turn_failures,
+                    references=turn_refs,
+                    definitions=turn_definitions,
+                )
+                yield AssistantFinal(
+                    text=grounded,
+                    commentary=commentary,
+                    claims=tuple(turn_claims),
+                    failures=tuple(turn_failures),
+                    references=tuple(turn_refs),
+                    definitions=tuple(turn_definitions),
+                )
+                return
+
+        # Hit max_steps / hunt_max_rounds without a final text turn.
         return
 
     def run(
@@ -357,10 +887,15 @@ class Agent:
         sess = session or Session.create()
         if store is not None and not store.path_for(sess.id).exists():
             store.create(sess)
+        seed = (
+            UserMsg(f"{task}\n\n{_hunt_kickoff_text(self.config)}")
+            if self.config.hunt
+            else _seed_user_message(task)
+        )
         if store is not None:
-            store.log_user(sess, _seed_user_message(task).text)
+            store.log_user(sess, seed.text)
         else:
-            sess.history.append(_seed_user_message(task))
+            sess.history.append(seed)
 
         transcript: list[Observation] = []
         final: str | None = None

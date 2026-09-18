@@ -7,11 +7,16 @@ Note the deliberate split (see ledger.TrustRoot):
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from konigsberg_empirical import discharging as _dis
+from konigsberg_empirical import reduction as _red
 from konigsberg_empirical.coloring import alon_tarsi as _at
 from konigsberg_empirical.coloring import choosability as _ch
 from konigsberg_empirical.coloring import fixer_breaker as _fb
 from konigsberg_empirical.search import counterexample as _cx
 from konigsberg_empirical.search.enumerate import parse_graph6
+from konigsberg_empirical.sufficient_only import assert_sufficient_only
 
 from ..ledger import Claim, mint_certificate, mint_enumeration, mint_solver_result
 
@@ -81,6 +86,154 @@ def alon_tarsi(graph6: str) -> Claim:
     return mint_solver_result(
         f"{graph6}: Alon-Tarsi (no verified certificate)",
         tool="alon_tarsi",
+    )
+
+
+@dataclass(frozen=True)
+class ReducibleConfigurationResult:
+    """Non-Claim tool outcome: inconclusive or out-of-scope (sufficient-only)."""
+
+    message: str
+    out_of_scope: bool = False
+
+    def __str__(self) -> str:
+        return self.message
+
+
+def _normalize_degrees(
+    degrees: dict[str, int] | list[int], n: int
+) -> dict[int, int]:
+    if isinstance(degrees, list):
+        if len(degrees) != n:
+            raise ValueError(f"expected {n} degrees, got {len(degrees)}")
+        return {v: int(d) for v, d in enumerate(degrees)}
+    spec = {int(k): int(v) for k, v in degrees.items()}
+    if set(spec) != set(range(n)):
+        raise ValueError(f"degrees must cover vertices 0..{n - 1}")
+    return spec
+
+
+def reducible_configuration(
+    core: str,
+    degrees: dict[str, int] | list[int],
+    D: int | None = None,
+) -> Claim | ReducibleConfigurationResult:
+    """Test whether a local configuration is reducible in a minimal BK counterexample.
+
+    Standing hypotheses H_BK: Δ=D≥9, K_D-free, D-critical. Builds
+    f(v) = (D-1) - d_G(v) + deg_K(v) from the degree spec (never model-supplied),
+    then tests f-choosability of the core via the choosability solver.
+
+    f-choosability of the core is SUFFICIENT for reducibility, not necessary — a
+    miss proves nothing, exactly like alon_tarsi. The forbidden-configuration
+    conclusion names H_BK. The reducibility bridge lemma
+    BK.reducible_of_fChoosable is formalized in Literature; HITs drop the
+    conditional tag when that status is ``formalized`` (fail-closed: any other
+    status keeps the tag).
+
+    HIT  → core is f-choosable ⇒ configuration FORBIDDEN in every minimal
+           counterexample (enumeration-rooted). SUFFICIENT ONLY.
+    MISS → method inconclusive; mints no Claim and proves nothing.
+    """
+    from .errors import ToolBudgetExceeded, ToolUnavailable
+
+    if not _ch.is_available():
+        raise ToolUnavailable("reducible_configuration", "pysat not installed")
+
+    graph = parse_graph6(core)
+    degree_spec = _normalize_degrees(degrees, graph.n)
+    try:
+        config = _red.build_configuration(graph, degree_spec, D)
+        result = _red.reducible(config)
+    except _red.ToolBudgetExceeded as e:
+        raise ToolBudgetExceeded("reducible_configuration", str(e)) from e
+
+    if result.out_of_scope:
+        return ReducibleConfigurationResult(
+            assert_sufficient_only(f"inconclusive (out of scope): {result.reason}"),
+            out_of_scope=True,
+        )
+    if not result.hit:
+        witness = (
+            [sorted(s) for s in result.bad_list] if result.bad_list is not None else None
+        )
+        extra = f"; witness bad f-list {witness}" if witness is not None else ""
+        return ReducibleConfigurationResult(
+            assert_sufficient_only(
+                f"inconclusive: {result.reason}{extra} (proves nothing about reducibility)"
+            )
+        )
+
+    stmt = _red.forbidden_configuration_statement(
+        core, config, palette=result.palette
+    )
+    return mint_enumeration(
+        stmt,
+        bound=f"palette<={result.palette}",
+        exhaustive=True,
+        tool="reducible_configuration",
+    )
+
+
+@dataclass
+class DischargingResult:
+    """Non-Claim tool outcome: argument does not close (sufficient-only)."""
+
+    message: str
+    survivors: tuple[str, ...] = ()
+
+    def __str__(self) -> str:
+        return self.message
+
+
+def discharging_unavoidable(
+    bind,
+    D: int,
+    mu: dict[str, int],
+    rules: list[dict],
+    forbidden: list[str],
+) -> Claim | DischargingResult:
+    """Verify a proposed discharging argument at Δ = D (v1: D = 9 only).
+
+    The model/human proposes μ and the transfer rules; the engine checks
+    conservation, the global charge sign, and every radius-1 neighborhood
+    type. UNAVOIDABLE is SUFFICIENT only — a miss returns the surviving
+    neighborhood types and proves nothing.
+
+    Forbidden cores must already be minted reducible on the ledger.
+    The UNAVOIDABLE conclusion is conditional on
+    BK.reducible_and_unavoidable_imp_no_counterexample until that
+    closure lemma is kernel-proved.
+    """
+    from ..campaign import forbidden_cores
+    from .errors import ToolBudgetExceeded
+
+    claims = bind.ledger.claims() if bind is not None and bind.ledger is not None else ()
+    reducible = set(forbidden_cores(claims))
+    arg = _dis.build_argument(D, mu, rules, forbidden)
+    try:
+        result = _dis.verify_unavoidable(arg, reducible_cores=reducible)
+    except _dis.ToolBudgetExceeded as e:
+        raise ToolBudgetExceeded("discharging_unavoidable", str(e)) from e
+    except _dis.DischargeRejected as e:
+        raise ValueError(str(e)) from e
+
+    if not result.hit:
+        if bind is not None:
+            bind.last_discharge_survivors = result.survivors
+        return DischargingResult(
+            assert_sufficient_only(result.reason), survivors=result.survivors
+        )
+
+    if bind is not None:
+        bind.last_discharge_survivors = ()
+    stmt = _dis.unavoidable_statement(arg, result)
+    n_types = len(_dis.local_types(arg.D))
+    return mint_enumeration(
+        stmt,
+        bound=f"D={arg.D} local-types={n_types}",
+        exhaustive=True,
+        tool="discharging_unavoidable",
     )
 
 
@@ -278,6 +431,146 @@ def bk_predicate(graph6: str, *, repl=None) -> Claim | list[Claim]:
 
     proved = verify_coloring(graph6, certs.coloring, repl=repl)
     return [main, proved]
+
+
+def reed_predicate(graph6: str, *, repl=None) -> Claim | list[Claim]:
+    """Evaluate Reed's conjecture on one graph.
+
+    Reed's conjecture (open): χ(G) ≤ ⌈(Δ(G) + ω(G) + 1)/2⌉ for every graph G.
+    Unlike BK there is no degree hypothesis — every graph is in scope. Returns
+    satisfies / VIOLATES, carrying Δ/ω/χ certificates, and flags the tight case
+    (χ = the bound) — the interesting extremal data. A violation is maximally
+    certified and, when a Lean REPL is bound, the χ-coloring is kernel-upgraded
+    via verify_coloring. Ordinary chromatic Reed — not the fractional/local forms.
+
+    Bound arithmetic: ⌈(Δ+ω+1)/2⌉ = (Δ+ω+2)//2. Tight for cliques and odd cycles
+    (e.g. K_n, C_5, and the Petersen graph).
+    """
+    from konigsberg_empirical.coloring import list_checks as lc
+
+    graph = parse_graph6(graph6)
+    deg = [graph.degree(v) for v in range(graph.n)]
+    delta = max(deg) if deg else 0
+
+    certs = lc.chromatic_certificates(graph)
+    if not lc.verify_chromatic_bundle(graph, certs):
+        raise ValueError("Reed certificate bundle failed independent check")
+    bound = (delta + certs.omega + 2) // 2  # ⌈(Δ+ω+1)/2⌉
+    tight = certs.chi == bound
+    tight_note = (
+        "Tight (χ equals the bound)."
+        if tight
+        else f"Slack {bound - certs.chi} below the bound."
+    )
+    bundle = (
+        f"Δ={delta}, ω={certs.omega}, χ={certs.chi}, "
+        f"⌈(Δ+ω+1)/2⌉={bound}; degrees {deg}; "
+        f"clique {certs.clique}; χ-coloring {certs.coloring}; "
+        f"not {max(certs.chi - 1, 0)}-colorable: {certs.lower_detail}"
+    )
+
+    if certs.chi <= bound:
+        return mint_certificate(
+            f"{graph6} satisfies Reed ({bundle}). {tight_note}",
+            checker="list_checks.verify_chromatic_bundle",
+            tool="reed_predicate",
+        )
+
+    # Violation — a counterexample to a famous open conjecture; maximally certified.
+    main = mint_certificate(
+        f"{graph6} VIOLATES Reed ({bundle}).",
+        checker="list_checks.verify_chromatic_bundle",
+        tool="reed_predicate",
+    )
+    if repl is None:
+        return main
+
+    from .bridge import verify_coloring
+
+    proved = verify_coloring(graph6, certs.coloring, repl=repl)
+    return [main, proved]
+
+
+def reed_sweep(
+    n_min: int = 2,
+    n_max: int = 7,
+    connected: bool = True,
+    max_tight: int = 30,
+) -> Claim:
+    """Census: verify Reed's bound over all graphs on n_min..n_max vertices in ONE
+    pass, cataloguing the tight cases.
+
+    Reed: χ(G) ≤ ⌈(Δ+ω+1)/2⌉ = (Δ+ω+2)//2. This runs the reed_predicate check
+    in-process on each enumerated graph — no agent round-trips — and mints a single
+    summary Claim: how many graphs were checked, whether all satisfy Reed, the
+    tight-case census (χ = the bound), and the first violation with its full Δ/ω/χ
+    certificate if one is found. This is the right granularity for a census; do NOT
+    loop reed_predicate by hand over an enumeration.
+
+    Enumeration is geng (or the atlas for n≤7); cap n_max accordingly. Since Reed
+    is known to hold at small size, a reported violation here is far more likely a
+    bug to investigate than a counterexample.
+    """
+    from konigsberg_empirical.coloring import choosability as ch
+    from konigsberg_empirical.coloring import list_checks as lc
+    from konigsberg_empirical.fundamentals.codec import to_graph6
+    from konigsberg_empirical.search.enumerate import all_graphs
+
+    from .errors import ToolUnavailable
+
+    if not ch.is_available():
+        raise ToolUnavailable("reed_sweep", "pysat not installed")
+    if n_min < 1 or n_max < n_min:
+        raise ValueError(f"bad n range: n_min={n_min}, n_max={n_max}")
+
+    constraints = {"connected": True} if connected else None
+    checked = 0
+    tight_count = 0
+    tight_examples: list[str] = []
+    violation: str | None = None
+
+    for n in range(n_min, n_max + 1):
+        for g in all_graphs(n, constraints=constraints):
+            deg = [g.degree(v) for v in range(g.n)]
+            delta = max(deg) if deg else 0
+            certs = lc.chromatic_certificates(g)
+            if not lc.verify_chromatic_bundle(g, certs):
+                raise ValueError("reed_sweep: chromatic bundle failed independent check")
+            bound = (delta + certs.omega + 2) // 2  # ⌈(Δ+ω+1)/2⌉
+            checked += 1
+            if certs.chi > bound:
+                violation = (
+                    f"{to_graph6(g)}: Δ={delta}, ω={certs.omega}, χ={certs.chi} "
+                    f"> ⌈(Δ+ω+1)/2⌉={bound}; χ-coloring {certs.coloring}; "
+                    f"clique {certs.clique}"
+                )
+                break
+            if certs.chi == bound:
+                tight_count += 1
+                if len(tight_examples) < max_tight:
+                    tight_examples.append(
+                        f"{to_graph6(g)}(Δ={delta},ω={certs.omega},χ={certs.chi})"
+                    )
+        if violation is not None:
+            break
+
+    family = "connected" if connected else "all"
+    if violation is not None:
+        return mint_certificate(
+            f"reed_sweep n={n_min}..{n_max} ({family}): VIOLATION after {checked} "
+            f"graphs — {violation}. (Reed holds at small size; investigate as a "
+            "likely bug before treating as a counterexample.)",
+            checker="list_checks.verify_chromatic_bundle",
+            tool="reed_sweep",
+        )
+    extra = "" if tight_count <= len(tight_examples) else f" (+{tight_count - len(tight_examples)} more)"
+    return mint_enumeration(
+        f"reed_sweep n={n_min}..{n_max} ({family}): Reed's bound holds on all "
+        f"{checked} graphs; {tight_count} tight (χ = bound): {tight_examples}{extra}",
+        bound=f"n={n_min}..{n_max} {family}; checked={checked}",
+        exhaustive=True,
+        tool="reed_sweep",
+    )
 
 
 def bk_search(

@@ -1,16 +1,15 @@
 #!/usr/bin/env python3
 """End-to-end agent demo: model → native tool use → provenance-stamped ledger.
 
-Uses a real `AnthropicModel` when `ANTHROPIC_API_KEY` is set; otherwise a
-scripted fake. Prefer `verify_coloring` when a Lean REPL is live (the honest
-empirical→formal crossing); otherwise `choosability_refute` (needs the `sat`
-extra) or `alon_tarsi` (pure Python).
+Uses a live model when ``OPENAI_BASE_URL`` / ``KONIGSBERG_PROVIDER=local`` or
+``ANTHROPIC_API_KEY`` is set; otherwise a scripted fake. Prefer `verify_coloring`
+when a Lean REPL is live (the honest empirical↔formal crossing); otherwise
+`choosability_refute` (needs the `sat` extra) or `alon_tarsi` (pure Python).
 
 Run:  uv run python scripts/agent_demo.py
 """
 from __future__ import annotations
 
-import os
 import sys
 
 from konigsberg_harness.agent import Agent, AgentConfig
@@ -75,23 +74,22 @@ def _scripted_plan(has_lean: bool, has_sat: bool) -> tuple[str, list]:
 
 
 def _build_model(scripted_turns: list):
-    if os.environ.get("ANTHROPIC_API_KEY"):
-        try:
-            from konigsberg_harness.models import AnthropicModel
+    try:
+        from konigsberg_harness.models import build_live_model, live_provider
 
-            model = AnthropicModel()
-            print("model: AnthropicModel (ANTHROPIC_API_KEY present)")
-            return model
-        except RuntimeError as e:
-            print(f"model: falling back to scripted ({e})")
-    else:
-        print("model: ScriptedDemoModel (set ANTHROPIC_API_KEY for a live run)")
+        model = build_live_model()
+        print(f"model: {type(model).__name__} ({live_provider()})")
+        return model
+    except RuntimeError as e:
+        print(f"model: ScriptedDemoModel ({e})")
     return ScriptedDemoModel(scripted_turns)
 
 
 def main() -> int:
+    from konigsberg_harness.envfile import load_project_env
     from konigsberg_harness.repl import lean_toolchain_available, open_lean_repl
 
+    load_project_env()
     lean_built = lean_toolchain_available()
     repl = open_lean_repl(timeout_s=180) if lean_built else None
     if repl is not None:

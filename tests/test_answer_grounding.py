@@ -134,8 +134,12 @@ def test_grounding_system_prompt_states_hard_rules():
     assert "bk_search" in GROUNDING_SYSTEM_PROMPT
     assert "bk_predicate" in GROUNDING_SYSTEM_PROMPT
     assert "literature_search" in GROUNDING_SYSTEM_PROMPT
+    assert "Build on Rabern" in GROUNDING_SYSTEM_PROMPT
+    assert "arxiv_search" in GROUNDING_SYSTEM_PROMPT
     assert "stated only" in GROUNDING_SYSTEM_PROMPT
-    assert "Never present a catalogued item as established" in GROUNDING_SYSTEM_PROMPT
+    assert "Never present a catalogued item as established" in GROUNDING_SYSTEM_PROMPT or (
+        "Never present a catalogued or arXiv item as established" in GROUNDING_SYSTEM_PROMPT
+    )
     assert "Definition grounding" in GROUNDING_SYSTEM_PROMPT
     assert "list_critical" in GROUNDING_SYSTEM_PROMPT
     assert "Never guess a parameterization" in GROUNDING_SYSTEM_PROMPT

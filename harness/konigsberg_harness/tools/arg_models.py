@@ -5,7 +5,7 @@ Each model is the single source of truth for a tool's JSON schema (API
 """
 from __future__ import annotations
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 class ChoosabilityRefuteArgs(BaseModel):
@@ -49,16 +49,59 @@ class BkSearchArgs(BaseModel):
     max_hits: int = 5
 
 
+class ReedSweepArgs(BaseModel):
+    n_min: int = 2
+    n_max: int = 7
+    connected: bool = True
+    max_tight: int = 30
+
+
 class LiteratureSearchArgs(BaseModel):
     query: str
     area: str | None = None
     status: str | None = None
 
 
+class ArxivSearchArgs(BaseModel):
+    query: str
+    max_results: int = 5
+    sort_by: str = "relevance"
+    category: str | None = "math.CO"
+
+
 class ListCriticalArgs(BaseModel):
     graph6: str
     m: int
     palette: int | None = None
+
+
+class ReducibleConfigurationArgs(BaseModel):
+    core: str
+    degrees: dict[str, int] | list[int]
+    D: int | None = None
+
+
+class DischargeRule(BaseModel):
+    from_deg: int
+    to_pattern: str
+    amount: int
+    radius: int = 1
+
+
+class DischargingArgs(BaseModel):
+    """Model proposes μ and rules; the engine verifies. v1 is D = 9 only."""
+
+    D: int
+    mu: dict[str, int]
+    rules: list[DischargeRule]
+    forbidden: list[str]
+
+    @field_validator("mu", mode="before")
+    @classmethod
+    def _stringify_mu_keys(cls, v: object) -> object:
+        if isinstance(v, dict):
+            return {str(k): int(val) for k, val in v.items()}
+        return v
 
 
 class LeanCheckArgs(BaseModel):
@@ -77,6 +120,31 @@ class LeanSearchArgs(BaseModel):
 class LeanProveArgs(BaseModel):
     lean_name: str
     snippet: str
+    durable: bool = False
+
+
+class LeanRetractArgs(BaseModel):
+    name: str
+
+
+class LemmaReadArgs(BaseModel):
+    name: str
+
+
+class EmptyArgs(BaseModel):
+    """No parameters."""
+
+
+class LeanAddToLibraryArgs(BaseModel):
+    """Write-back args. ``confirmed`` is NOT model-exposed — REPL sets it."""
+
+    lean_name: str
+    snippet: str
+    area: str = "coloring"
+    citation: str
+    informal_statement: str
+    referee_report: dict
+    sanity_snippet: str | None = None
 
 
 # --- Graph fundamentals ---------------------------------------------------
@@ -134,6 +202,12 @@ class HostPatternArgs(BaseModel):
 class KArgs(BaseModel):
     graph6: str
     k: int
+
+
+class BlowUpArgs(BaseModel):
+    graph6: str
+    r: int
+    clique: bool = True
 
 
 class ContainsCycleArgs(BaseModel):

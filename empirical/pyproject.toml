@@ -22,3 +22,6 @@ build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
 packages = ["konigsberg_empirical"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"konigsberg_empirical/reduction/reducible_seeds.toml" = "konigsberg_empirical/reduction/reducible_seeds.toml"

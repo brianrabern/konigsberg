@@ -12,21 +12,26 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
+      - uses: astral-sh/setup-uv@v3
+      - run: uv sync
       - name: audit self-test (planted sorry/axiom/native_decide)
-        run: python ci/self_test_audit.py
+        run: uv run python ci/self_test_audit.py
+      - name: referee self-test (planted flawed claims)
+        run: uv run python ci/referee_self_test.py
+      - name: reduction self-test (reducible-configuration engine)
+        run: uv run python ci/reduction_self_test.py
+      - name: discharging self-test (discharging engine)
+        run: uv run python ci/discharging_self_test.py
       - name: status schema
-        run: python ci/check_status.py formal
+        run: uv run python ci/check_status.py formal
       - name: no sorry in formalized entries
-        run: python ci/check_no_sorry.py formal
+        run: uv run python ci/check_no_sorry.py formal
       - name: axiom whitelist (recorded)
-        run: python ci/check_axioms.py formal
+        run: uv run python ci/check_axioms.py formal
       - name: import coverage
-        run: python ci/check_imports.py formal
+        run: uv run python ci/check_imports.py formal
       - name: Literature conventions
-        run: python ci/check_conventions.py formal
+        run: uv run python ci/check_conventions.py formal
 
   python:
     runs-on: ubuntu-latest

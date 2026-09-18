@@ -440,6 +440,49 @@ def line_graph(graph6: str) -> Claim:
     return _out_graph(ops.line_graph(_g(graph6)), tool="line_graph", label=f"line_graph({graph6})")
 
 
+def independent_hitting_set(graph6: str) -> Claim:
+    """Rabern's hitting property: does an independent set meet every maximum clique?
+
+    True → certificate-checked (the witness independent hitting set is re-verified).
+    False → python-checked (complete backtracking search; the property genuinely
+    fails, e.g. C₅). ω and the number of maximum cliques are reported either way.
+    """
+    from konigsberg_empirical.fundamentals import hitting as _h
+
+    g = _g(graph6)
+    ok, witness = _h.independent_hitting_set(g)
+    omega, qs = _h.maximum_cliques(g)
+    if ok:
+        if not _h.verify_independent_hitting_set(g, witness or []):
+            raise ValueError("hitting-set witness failed independent re-check")
+        return mint_certificate(
+            f"{graph6}: independent set {witness} meets all {len(qs)} maximum "
+            f"cliques (ω={omega}); re-checked. Rabern hitting property HOLDS.",
+            checker="fundamentals.hitting.verify_independent_hitting_set",
+            tool="independent_hitting_set",
+        )
+    return _pc(
+        f"{graph6}: NO independent set meets all {len(qs)} maximum cliques "
+        f"(ω={omega}); complete search. Rabern hitting property FAILS.",
+        tool="independent_hitting_set",
+        bound=f"n={g.n} exhaustive",
+    )
+
+
+def mycielskian(graph6: str) -> Claim:
+    return _out_graph(
+        ops.mycielskian(_g(graph6)), tool="mycielskian", label=f"mycielskian({graph6})"
+    )
+
+
+def blow_up(graph6: str, r: int, clique: bool = True) -> Claim:
+    return _out_graph(
+        ops.blow_up(_g(graph6), r, clique=clique),
+        tool="blow_up",
+        label=f"blow_up({graph6}, r={r}, clique={clique})",
+    )
+
+
 def disjoint_union(graph6: str, other: str) -> Claim:
     return _out_graph(
         ops.disjoint_union(_g(graph6), _g(other)),
@@ -754,6 +797,9 @@ TOOL_CATEGORY: dict[str, str] = {
     "add_vertex": "structure",
     "contract_edge": "structure",
     "line_graph": "structure",
+    "mycielskian": "structure",
+    "blow_up": "structure",
+    "independent_hitting_set": "relations",
     "disjoint_union": "structure",
     "union": "structure",
     "join": "structure",
@@ -790,13 +836,22 @@ TOOL_CATEGORY: dict[str, str] = {
     "bk_predicate": "coloring",
     "list_critical": "coloring",
     "verify_coloring": "coloring",
+    "reducible_configuration": "reduction",
+    "discharging_unavoidable": "reduction",
+    "campaign_status": "reduction",
     # formal
     "lean_check": "formal",
     "lean_typecheck_statement": "formal",
     "lean_search": "formal",
     "lean_prove": "formal",
+    "lean_add_to_library": "formal",
+    "lemma_list": "formal",
+    "lemma_read": "formal",
+    "reset_env": "formal",
+    "retract": "formal",
     # literature
     "literature_search": "literature",
+    "arxiv_search": "literature",
 }
 
 CATEGORY_ORDER = (
@@ -808,6 +863,7 @@ CATEGORY_ORDER = (
     "generators",
     "paths",
     "coloring",
+    "reduction",
     "formal",
     "literature",
     "other",
@@ -845,6 +901,7 @@ FUNDAMENTAL_TOOL_NAMES: frozenset[str] = frozenset(
 def register_fundamentals(reg: Any) -> None:
     """Register all fundamentals tools on ``reg`` (a ToolRegistry)."""
     from .arg_models import (
+        BlowUpArgs,
         ContainsCycleArgs,
         ContainsPathArgs,
         EdgesArgs,
@@ -978,6 +1035,32 @@ def register_fundamentals(reg: Any) -> None:
         ("add_vertex", add_vertex, "Add an isolated vertex → canonical graph6.", Graph6Args),
         ("contract_edge", contract_edge, "Contract an edge → canonical graph6.", EdgeUVArgs),
         ("line_graph", line_graph, "Line graph → canonical graph6.", Graph6Args),
+        (
+            "independent_hitting_set",
+            independent_hitting_set,
+            "Rabern's property: does an independent set meet every MAXIMUM clique? "
+            "Returns a re-checked witness (holds) or a complete-search negative "
+            "(fails, e.g. C₅). ω and #max-cliques reported. Certificate-checked on "
+            "a hit; the engine under the BK clique-structure theorems.",
+            Graph6Args,
+        ),
+        (
+            "mycielskian",
+            mycielskian,
+            "Mycielskian μ(G) → canonical graph6: raises χ by one while keeping the "
+            "clique number fixed (triangle-free stays triangle-free). μ(C₅) is the "
+            "Grötzsch graph; iterate from K₂ for the triangle-free k-chromatic family. "
+            "Use to build a recalled construction, then verify it with a tool.",
+            Graph6Args,
+        ),
+        (
+            "blow_up",
+            blow_up,
+            "Blow up each vertex into r copies → canonical graph6. clique=True: each "
+            "vertex → Kᵣ (clique blow-up); clique=False: → independent set. Adjacent "
+            "vertices' copies are fully joined.",
+            BlowUpArgs,
+        ),
         (
             "disjoint_union",
             disjoint_union,

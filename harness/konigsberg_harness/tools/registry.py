@@ -14,18 +14,26 @@ from pydantic import BaseModel, ValidationError
 
 from .arg_models import (
     AlonTarsiArgs,
+    ArxivSearchArgs,
     BkPredicateArgs,
     BkSearchArgs,
     ChoosabilityRefuteArgs,
     DecideColorableArgs,
+    DischargingArgs,
+    EmptyArgs,
     FixerBreakerArgs,
     Graph6Args,
+    LeanAddToLibraryArgs,
     LeanCheckArgs,
     LeanProveArgs,
+    LeanRetractArgs,
     LeanSearchArgs,
     LeanTypecheckStatementArgs,
+    LemmaReadArgs,
     ListCriticalArgs,
     LiteratureSearchArgs,
+    ReducibleConfigurationArgs,
+    ReedSweepArgs,
     VerifyColoringArgs,
     schema_for,
 )
@@ -33,6 +41,7 @@ from .fundamentals_tools import CATEGORY_ORDER, category_for, register_fundament
 
 if TYPE_CHECKING:
     from ..lean_repl import LeanREPL
+    from ..lemmas import LemmaNotebook
 
 # Re-export so callers/tests can catch the same class the loop catches.
 __all__ = [
@@ -56,6 +65,7 @@ class Tool:
 @dataclass
 class ToolRegistry:
     _tools: dict[str, Tool] = field(default_factory=dict)
+    campaign_bind: Any = None
 
     def register(
         self,
@@ -110,7 +120,10 @@ class ToolRegistry:
         return [(c, buckets[c]) for c in CATEGORY_ORDER if buckets.get(c)]
 
 
-def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
+def build_registry(
+    repl: LeanREPL | None = None,
+    notebook: LemmaNotebook | None = None,
+) -> ToolRegistry:
     """Populate a registry with the real tools.
 
     Empirical tools need no Lean; the formal tools are bound to a live `repl`
@@ -121,9 +134,15 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
     `counterexample_search` is registered for code use but has no args_model, so
     it is omitted from `tool_specs()` (non-JSON-serializable predicate).
     """
+    from ..campaign import CampaignBind, campaign_status
+    from ..lemmas import LemmaNotebook, lemma_list, lemma_read
+    from . import arxiv_tools as ax
     from . import empirical_tools as et
     from . import lean_tools as lt
     from . import literature_tools as lit
+
+    if repl is not None and notebook is None:
+        notebook = LemmaNotebook()
 
     reg = ToolRegistry()
     register_fundamentals(reg)
@@ -134,6 +153,16 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "status-bearing records (formalized / stated / external-verified); does "
         "NOT mint ledger Claims. Carry each hit's status verbatim — stated ≠ proven.",
         args_model=LiteratureSearchArgs,
+    )
+    reg.register(
+        "arxiv_search",
+        ax.arxiv_search,
+        "Search arXiv (default cat:math.CO). Returns bibliographic hits "
+        "(title, authors, abs url, summary snippet) with status=arxiv. Does NOT "
+        "mint ledger Claims and does NOT verify the papers — use for leads, then "
+        "prefer literature_search / Lean / empirical tools to establish anything. "
+        "Pass category=null for unfiltered search.",
+        args_model=ArxivSearchArgs,
     )
     reg.register(
         "counterexample_search",
@@ -158,6 +187,41 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "(sufficient for list-colorability). A hit is independently re-checked "
         "(certificate-checked). A miss proves nothing — AT is sufficient only.",
         args_model=AlonTarsiArgs,
+    )
+    reg.register(
+        "reducible_configuration",
+        et.reducible_configuration,
+        "Test BK reducibility of a local configuration (core graph6 + ambient "
+        "degrees, optional D). f-choosability of the core is SUFFICIENT for "
+        "reducibility, not necessary — a miss proves nothing, exactly like "
+        "alon_tarsi. Requires H_BK (Δ=D≥9, K_D-free, D-critical). The "
+        "bridge BK.reducible_of_fChoosable is formalized; a HIT is still "
+        "sufficient-only. HIT mints a forbidden-config Claim; MISS "
+        "mints nothing and proves nothing.",
+        args_model=ReducibleConfigurationArgs,
+    )
+    bind = CampaignBind()
+    reg.campaign_bind = bind
+    reg.register(
+        "discharging_unavoidable",
+        partial(et.discharging_unavoidable, bind),
+        "Verify a proposed discharging argument (μ + rules + forbidden cores) "
+        "at Δ = D. v1 is D=9 only. UNAVOIDABLE is SUFFICIENT for the discharging "
+        "half — a miss returns surviving neighborhood types and proves nothing. "
+        "Forbidden cores must already be minted reducible "
+        "on the ledger. HIT is conditional on "
+        "BK.reducible_and_unavoidable_imp_no_counterexample.",
+        args_model=DischargingArgs,
+    )
+    reg.register(
+        "campaign_status",
+        partial(campaign_status, bind),
+        "Ledger-backed BK staircase: |𝒞|, locked lemmas, discharging "
+        "(closed / last miss neighborhood), and the first incomplete increment. "
+        "Does NOT mint a Claim. Call this instead of rediscovering C4/C6. "
+        "NEXT is the only assigned work. A frozen stair surfaces REFORMULATE "
+        "(Rabern: equivalent weaker-looking form).",
+        args_model=EmptyArgs,
     )
     reg.register(
         "fixer_breaker",
@@ -210,6 +274,28 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "On a violation (and Lean available), also kernel-upgrades the χ-coloring.",
         args_model=BkPredicateArgs,
     )
+    _reed_pred = (
+        partial(et.reed_predicate, repl=repl) if repl is not None else et.reed_predicate
+    )
+    reg.register(
+        "reed_predicate",
+        _reed_pred,
+        "Evaluate Reed's conjecture on graph6 (open; claimed for all graphs): "
+        "χ ≤ ⌈(Δ+ω+1)/2⌉. Returns satisfies / VIOLATES with Δ/ω/χ certificates and "
+        "a tight-case flag (χ = the bound). Ordinary chromatic Reed. On a violation "
+        "(and Lean available), also kernel-upgrades the χ-coloring.",
+        args_model=Graph6Args,
+    )
+    reg.register(
+        "reed_sweep",
+        et.reed_sweep,
+        "Census: verify Reed's bound χ ≤ ⌈(Δ+ω+1)/2⌉ over ALL graphs on "
+        "n_min..n_max vertices in one pass (geng, or atlas for n≤7). Mints ONE "
+        "summary Claim: count checked, all-satisfy / first-violation, and the "
+        "tight-case census (χ = bound). Use this for a sweep — do NOT loop "
+        "reed_predicate by hand over an enumeration.",
+        args_model=ReedSweepArgs,
+    )
     reg.register(
         "bk_search",
         et.bk_search,
@@ -229,6 +315,23 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
         "choosability_refute with a guessed k.",
         args_model=ListCriticalArgs,
     )
+    if notebook is not None:
+        reg.register(
+            "lemma_list",
+            partial(lemma_list, notebook),
+            "List lemmas/theorems locked this investigation (name + durable/"
+            "session tag). Read a snippet with lemma_read. These survive "
+            "--resume and are replayed into Lean; they are not Literature "
+            "until /promote.",
+            args_model=EmptyArgs,
+        )
+        reg.register(
+            "lemma_read",
+            partial(lemma_read, notebook),
+            "Return the locked Lean snippet for a named lemma from this "
+            "session's working notebook.",
+            args_model=LemmaReadArgs,
+        )
     if repl is not None:
         from . import bridge as br
 
@@ -255,8 +358,38 @@ def build_registry(repl: LeanREPL | None = None) -> ToolRegistry:
             "lean_prove",
             partial(lt.lean_prove, repl),
             "Elaborate a full proof; on success mints a `proved` Claim carrying "
-            "#print axioms. The only tool that can mint kernel-trust.",
+            "#print axioms. The only tool that can mint kernel-trust. "
+            "Pass durable=True to elaborate against a fresh corpus env (no session "
+            "decls) — required for promotability. Session-only proofs are tagged "
+            "[session-only] and lean_add_to_library refuses them. Every success "
+            "is locked on the working notebook (lemma_list / lemma_read) and "
+            "installed in the session env. Unit of durable work: one self-contained "
+            "snippet (helpers + target), not a pile of env lemmas.",
             args_model=LeanProveArgs,
+        )
+        reg.register(
+            "reset_env",
+            partial(lt.reset_env, repl, notebook),
+            "Drop ephemeral session Lean declarations, reload the corpus "
+            "preamble, then replay locked lemmas from the working notebook.",
+            args_model=EmptyArgs,
+        )
+        reg.register(
+            "retract",
+            partial(lt.retract, repl),
+            "Drop a single named session declaration and rebuild the remaining "
+            "session cmds from the corpus preamble.",
+            args_model=LeanRetractArgs,
+        )
+        reg.register(
+            "lean_add_to_library",
+            partial(lt.lean_add_to_library, repl),
+            "Promote a referee-accepted proved result into Literature (write-back). "
+            "REFUSES without durable=True provenance, an accepting referee_report, "
+            "clean axioms, SanityChecks, and human confirmation "
+            "(confirmed=True from /promote only). "
+            "Do not call this from ordinary research turns — use /promote.",
+            args_model=LeanAddToLibraryArgs,
         )
         reg.register(
             "verify_coloring",

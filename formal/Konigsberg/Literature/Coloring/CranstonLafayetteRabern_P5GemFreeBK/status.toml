@@ -1,0 +1,9 @@
+[entry]
+name = "CranstonLafayetteRabern_P5GemFreeBK"
+citation = "D. W. Cranston, H. Lafayette, L. Rabern, Coloring (P₅, gem)-free graphs with Δ−1 colors, J. Graph Theory 101 (2022) 633–642; arXiv:2006.02015"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonLafayetteRabern_P5GemFreeBK.p5GemFree_BK"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

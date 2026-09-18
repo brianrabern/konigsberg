@@ -16,7 +16,7 @@ class StubREPL:
     def ensure_preamble(self, preamble=None, *, timeout_s=None) -> None:
         return None
 
-    def send(self, snippet, *, timeout_s=None, new_env=False) -> GoalState:
+    def send(self, snippet, *, timeout_s=None, new_env=False, commit=True) -> GoalState:
         return self._gs
 
 
@@ -84,11 +84,29 @@ def test_tool_specs_omit_code_only_tools_and_include_schema():
         "area",
         "status",
     }
+    assert specs["arxiv_search"]["input_schema"]["properties"].keys() >= {
+        "query",
+        "max_results",
+        "sort_by",
+        "category",
+    }
     assert specs["list_critical"]["input_schema"]["properties"].keys() >= {
         "graph6",
         "m",
         "palette",
     }
+    assert specs["reducible_configuration"]["input_schema"]["properties"].keys() >= {
+        "core",
+        "degrees",
+        "D",
+    }
+    assert specs["discharging_unavoidable"]["input_schema"]["properties"].keys() >= {
+        "D",
+        "mu",
+        "rules",
+        "forbidden",
+    }
+    assert specs["campaign_status"]["input_schema"]["properties"] == {}
     assert specs["make_graph"]["input_schema"]["properties"].keys() >= {"kind"}
 
 
@@ -108,6 +126,7 @@ def test_tool_specs_with_repl_include_verify_coloring():
 
 _CORE_EMPIRICAL = {
     "literature_search",
+    "arxiv_search",
     "counterexample_search",
     "choosability_refute",
     "alon_tarsi",
@@ -118,7 +137,12 @@ _CORE_EMPIRICAL = {
     "chromatic_number",
     "bk_predicate",
     "bk_search",
+    "reed_predicate",
+    "reed_sweep",
     "list_critical",
+    "reducible_configuration",
+    "discharging_unavoidable",
+    "campaign_status",
 } | set(FUNDAMENTAL_TOOL_NAMES)
 
 
@@ -134,7 +158,12 @@ def test_registry_with_repl_adds_formal_tools():
         "lean_typecheck_statement",
         "lean_search",
         "lean_prove",
+        "lean_add_to_library",
+        "lemma_list",
+        "lemma_read",
         "verify_coloring",
+        "reset_env",
+        "retract",
     }
 
 

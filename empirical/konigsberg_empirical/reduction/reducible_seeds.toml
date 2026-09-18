@@ -1,0 +1,56 @@
+# Rabern / Cranston–Rabern forbidden-configuration seeds (Δ = 9 low-vertex regime).
+#
+# Each seed is a configuration they proved reducible (or that their f-choosable-join
+# method immediately yields as an all-low-vertex core: f(v) = deg_K(v)).
+# The engine re-derives reducibility; this file only supplies core + degree spec
+# so the hunt starts from the known catalogue, not from C₄ invented at random.
+#
+# graph6 strings are networkx/graph6_encode output (same as make_graph).
+
+[[seed]]
+name = "CR_low_P3"
+source = "Cranston–Rabern, Coloring a graph with Δ−1 colors (arXiv:1203.5380); even-path of low vertices"
+core = "Bg"
+degrees = [8, 8, 8]
+D = 9
+note = "P₃, all low (d_G = D−1). Self-test HIT. Re-derive before inventing cores."
+
+[[seed]]
+name = "CR_low_C4"
+source = "Cranston–Rabern, Coloring a graph with Δ−1 colors (arXiv:1203.5380); even cycle of low vertices"
+core = "Cl"
+degrees = [8, 8, 8, 8]
+D = 9
+note = "C₄ as all-low-vertex core; 2-choosable even cycle. Do not rediscover this."
+
+[[seed]]
+name = "CR_low_P4"
+source = "Cranston–Rabern, Coloring a graph with Δ−1 colors (arXiv:1203.5380); path of low vertices"
+core = "Ch"
+degrees = [8, 8, 8, 8]
+D = 9
+note = "P₄, all low."
+
+[[seed]]
+name = "CR_low_C6"
+source = "Cranston–Rabern, Coloring a graph with Δ−1 colors (arXiv:1203.5380); even cycle of low vertices"
+core = "EhEG"
+degrees = [8, 8, 8, 8, 8, 8]
+D = 9
+note = "C₆ as all-low-vertex core."
+
+[[seed]]
+name = "CR_join_E2_E3"
+source = "Cranston–Rabern, Coloring a graph with Δ−1 colors (arXiv:1203.5380) §4 f-choosable joins; Ē₂ ∗ Ē₃ = K_{2,3}"
+core = "D]o"
+degrees = [8, 8, 8, 8, 8]
+D = 9
+note = "Complete bipartite K_{2,3} as all-low-vertex join (both sides ≥2)."
+
+[[seed]]
+name = "CR_low_C8"
+source = "Cranston–Rabern claw-free BK (SIDMA 2013 / arXiv:1206.1269); even cycle of low vertices"
+core = "GhCGKC"
+degrees = [8, 8, 8, 8, 8, 8, 8, 8]
+D = 9
+note = "C₈ as all-low-vertex core."

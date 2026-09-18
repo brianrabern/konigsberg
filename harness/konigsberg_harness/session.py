@@ -21,6 +21,7 @@ from .ledger import (
     Provenance,
     TrustRoot,
 )
+from .lemmas import LemmaNotebook, LockedLemma
 from .models import (
     AssistantText,
     HistoryItem,
@@ -53,6 +54,7 @@ def claim_to_dict(claim: Claim) -> dict[str, Any]:
             "axioms": list(p.axioms),
             "tool": p.tool,
             "at": p.at,
+            "durable": p.durable,
         },
     }
 
@@ -69,6 +71,7 @@ def claim_from_dict(data: dict[str, Any]) -> Claim:
             axioms=tuple(p.get("axioms") or ()),
             tool=p.get("tool") or "",
             at=p.get("at") or _utcnow(),
+            durable=bool(p.get("durable", False)),
         ),
     )
 
@@ -109,11 +112,12 @@ def history_item_from_dict(data: dict[str, Any]) -> HistoryItem:
 
 @dataclass
 class Session:
-    """Durable investigation state: chat history + ledger."""
+    """Durable investigation state: chat history + ledger + locked lemmas."""
 
     id: str
     history: list[HistoryItem] = field(default_factory=list)
     ledger: Ledger = field(default_factory=Ledger)
+    notebook: LemmaNotebook = field(default_factory=LemmaNotebook)
     created_at: str = field(default_factory=_utcnow)
     updated_at: str = field(default_factory=_utcnow)
 
@@ -138,8 +142,24 @@ class SessionStore:
     def list_ids(self) -> list[str]:
         return sorted(p.stem for p in self.root.glob("*.jsonl"))
 
-    def latest_id(self) -> str | None:
+    def _has_content(self, session_id: str) -> bool:
+        """True if the session has any event beyond the initial session_meta —
+        i.e. it isn't a freshly-created empty session."""
+        path = self.path_for(session_id)
+        if not path.exists():
+            return False
+        n = 0
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                n += 1
+                if n > 1:
+                    return True
+        return False
+
+    def latest_id(self, *, with_content: bool = False) -> str | None:
         paths = list(self.root.glob("*.jsonl"))
+        if with_content:
+            paths = [p for p in paths if self._has_content(p.stem)]
         if not paths:
             return None
         return max(paths, key=lambda p: p.stat().st_mtime).stem
@@ -175,6 +195,12 @@ class SessionStore:
         session.ledger.record(claim)
         session.touch()
         self.write_event(session.id, {"type": "claim", **claim_to_dict(claim)})
+
+    def log_lemma(self, session: Session, lemma: LockedLemma) -> None:
+        """Lock a proved snippet on the working notebook (append-only JSONL)."""
+        session.notebook.lock(lemma)
+        session.touch()
+        self.write_event(session.id, {"type": "lemma", **lemma.to_dict()})
 
     def log_compaction(
         self, session: Session, *, summary: str, kept: list[HistoryItem]
@@ -228,6 +254,8 @@ class SessionStore:
             elif et == "claim":
                 # Reconstruct trust state from recorded claims — never re-run tools.
                 session.ledger.record(claim_from_dict(event))
+            elif et == "lemma":
+                session.notebook.lock(LockedLemma.from_dict(event))
             elif et == "compact":
                 kept = [history_item_from_dict(i) for i in event.get("kept") or []]
                 history = [UserMsg(event["summary"]), *kept]
@@ -239,5 +267,7 @@ class SessionStore:
         return session
 
     def latest(self) -> Session | None:
-        sid = self.latest_id()
+        # Skip the empty session Repl.__init__ just created, so --continue lands
+        # on the newest session that actually has content.
+        sid = self.latest_id(with_content=True)
         return self.load(sid) if sid else None

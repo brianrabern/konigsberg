@@ -85,3 +85,24 @@ def tensor_product(g: Graph, h: Graph) -> Graph:
 def k_core(g: Graph, k: int) -> Graph:
     H = nx.k_core(to_nx(g), k)
     return from_nx(H)
+
+
+def mycielskian(g: Graph) -> Graph:
+    """Mycielskian μ(G): raises χ by one while keeping the clique number fixed
+    (triangle-free ⇒ triangle-free). μ(C₅) is the Grötzsch graph; iterating from
+    K₂ builds the triangle-free k-chromatic family."""
+    return from_nx(nx.mycielskian(to_nx(g)))
+
+
+def blow_up(g: Graph, r: int, clique: bool = True) -> Graph:
+    """Blow up each vertex into r copies (lexicographic product G[·]).
+
+    clique=True  → each vertex becomes a Kᵣ (clique blow-up G[Kᵣ]).
+    clique=False → each vertex becomes an independent set (blow-up G[K̄ᵣ]).
+    Adjacent vertices' copies are fully joined either way.
+    """
+    r = int(r)
+    if r < 1:
+        raise ValueError(f"blow-up factor r must be ≥ 1, got {r}")
+    inner = nx.complete_graph(r) if clique else nx.empty_graph(r)
+    return from_nx(nx.lexicographic_product(to_nx(g), inner))

@@ -118,11 +118,21 @@ def test_konigsberg_mark_has_seven_bridges():
     assert "╱╱╱" not in _KONIGSBERG_MARK and "╲╲╲" not in _KONIGSBERG_MARK
 
 
-def test_health_line_colors_axes():
+def test_model_status_label_local(monkeypatch):
+    from konigsberg_harness.ui import model_status_label
+
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.setenv("KONIGSBERG_PROVIDER", "local")
+    monkeypatch.setenv("KONIGSBERG_MODEL", "Qwen2.5-Coder-32B-Instruct")
+    assert model_status_label() == "Qwen2.5-Coder-32B-Instruct"
     from konigsberg_harness.ui import _short_model_name, health_line
 
     assert _short_model_name("claude-sonnet-4-5-20250929") == "sonnet-4.5"
     assert _short_model_name("claude-haiku-4-5-20251001") == "haiku-4.5"
+    assert (
+        _short_model_name("/models/Qwen2.5-Coder-32B-Instruct-Q4_K_M.gguf")
+        == "Qwen2.5-Coder-32B-Instruct-Q4_K_M"
+    )
     live = health_line(lean_live=True)
     plain = live.plain
     assert "formal: ✓ live" in plain

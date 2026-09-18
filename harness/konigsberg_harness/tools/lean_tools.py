@@ -5,7 +5,9 @@
                              (catches "proved the wrong thing")
     lean_eval               #eval / #reduce; decidable computation in Lean
     lean_search             exact?/apply?/Loogle over mathlib + own library
+    lean_prove              elaborate a proof (optionally durable / corpus-fresh)
     lean_add_to_library     GATED commit of an accepted lemma (behind check_axioms)
+    reset_env / retract     session-env hygiene
 """
 from __future__ import annotations
 
@@ -53,20 +55,71 @@ def lean_typecheck_statement(
     statement fails to elaborate; otherwise mints a `stated` Claim.
     """
     repl.ensure_preamble(timeout_s=timeout_s)
-    state = repl.send(f"example : {statement} := sorry", timeout_s=timeout_s)
+    # Transactional: a failed `example := sorry` must not poison the session env.
+    state = repl.send_transactional(
+        f"example : {statement} := sorry", timeout_s=timeout_s
+    )
     if not state.ok:
         raise ValueError(f"statement does not elaborate: {state.errors}")
     return mint_lean_statement(statement, tool="lean_typecheck_statement")
 
 
-def lean_prove(repl: LeanREPL, lean_name: str, snippet: str) -> Claim:
-    """Elaborate a full proof; on success mint a proof Claim carrying #print axioms."""
-    repl.ensure_preamble()
-    state = repl.send(snippet)
+def lean_prove(
+    repl: LeanREPL,
+    lean_name: str,
+    snippet: str,
+    *,
+    durable: bool = False,
+    timeout_s: float | None = None,
+) -> Claim:
+    """Elaborate a full proof; on success mint a proof Claim carrying #print axioms.
+
+    When ``durable=True``, elaborate in a **fresh corpus env** (committed Konigsberg
+    + Mathlib.Tactic only — no accumulated session decls). Success ⇒ the snippet is
+    self-contained and promotable; the Claim records ``durable=True``. The session
+    env is restored afterward (durable prove does not pollute or replace it).
+
+    When ``durable=False`` (default), elaborate transactionally against the session
+    env: commit only on full success. A failed elaboration leaves no declaration
+    behind. Session-only proofs are tagged ``[session-only]`` and are not promotable.
+    """
+    if durable:
+        snap = repl.snapshot()
+        try:
+            repl.load_preamble(timeout_s=timeout_s if timeout_s is not None else 300)
+            state = repl.send_transactional(snippet, timeout_s=timeout_s)
+            if not state.ok:
+                raise ValueError(
+                    f"durable proof failed (snippet not self-contained against "
+                    f"corpus): {state.errors}"
+                )
+            axioms = tuple(repl.print_axioms(lean_name, timeout_s=timeout_s))
+            claim = mint_lean_proof(
+                statement=lean_name,
+                axioms=axioms,
+                tool="lean_prove",
+                durable=True,
+            )
+        finally:
+            repl.restore(snap)
+        # Durable prove restores the old env pointer, which does not contain the
+        # new decl. Install it into the session env so later lemmas can use it.
+        try:
+            repl.ensure_preamble(timeout_s=timeout_s)
+            inst = repl.send_transactional(snippet, timeout_s=timeout_s)
+            _ = inst.ok
+        except Exception as exc:  # noqa: BLE001 — Claim already minted; install is best-effort
+            _ = exc
+        return claim
+
+    repl.ensure_preamble(timeout_s=timeout_s)
+    state = repl.send_transactional(snippet, timeout_s=timeout_s)
     if not state.ok:
         raise ValueError(f"proof failed: {state.errors}")
-    axioms = tuple(repl.print_axioms(lean_name))
-    return mint_lean_proof(statement=lean_name, axioms=axioms, tool="lean_prove")
+    axioms = tuple(repl.print_axioms(lean_name, timeout_s=timeout_s))
+    return mint_lean_proof(
+        statement=lean_name, axioms=axioms, tool="lean_prove", durable=False
+    )
 
 
 def lean_search(
@@ -83,10 +136,71 @@ def lean_search(
     if tactic not in _SEARCH_TACTICS:
         raise ValueError(f"tactic must be one of {_SEARCH_TACTICS}, got {tactic!r}")
     repl.ensure_preamble(timeout_s=timeout_s)
-    state = repl.send(f"example : {goal} := by {tactic}", timeout_s=timeout_s)
+    # Search examples should not stick in the session env.
+    state = repl.send(
+        f"example : {goal} := by {tactic}", timeout_s=timeout_s, commit=False
+    )
     return _parse_suggestions("\n".join([*state.infos, *state.errors]))
 
 
-def lean_add_to_library(repl: LeanREPL, lean_name: str, snippet: str) -> Claim:
-    """Commit only after the axiom gate accepts. Never automatic."""
-    raise NotImplementedError
+def reset_env(repl: LeanREPL, notebook: object | None = None) -> str:
+    """Drop ephemeral session decls; reload preamble; replay locked lemmas."""
+    repl.reset_env(timeout_s=300)
+    from ..lemmas import LemmaNotebook, replay_locked_lemmas
+
+    nb = notebook if isinstance(notebook, LemmaNotebook) else None
+    if nb is None or not nb.lemmas:
+        return "session env reset to clean corpus preamble (all session decls dropped)"
+    ok, errors = replay_locked_lemmas(repl, nb, timeout_s=300)
+    msg = (
+        "session env reset to clean corpus preamble; "
+        f"replayed {ok}/{len(nb.lemmas)} locked lemmas"
+    )
+    if errors:
+        msg += " — " + "; ".join(errors[:3])
+    return msg
+
+
+def retract(repl: LeanREPL, name: str) -> str:
+    """Drop the session declaration ``name`` and rebuild remaining session cmds."""
+    repl.retract(name, timeout_s=300)
+    return f"retracted session declaration {name!r}; remaining session cmds replayed"
+
+
+def lean_add_to_library(
+    repl: LeanREPL,
+    lean_name: str,
+    snippet: str,
+    *,
+    area: str,
+    citation: str,
+    informal_statement: str,
+    referee_report: object,
+    sanity_snippet: str | None = None,
+    confirmed: bool = False,
+    formal_root: object = None,
+    run_gates: bool = True,
+    source_claim: Claim | None = None,
+) -> Claim:
+    """Commit only after referee accept + human confirm + axiom/sanity gates.
+
+    Never automatic. See ``tools.library_writeback.lean_add_to_library``.
+    """
+    from pathlib import Path
+
+    from .library_writeback import lean_add_to_library as _write
+
+    return _write(
+        repl,
+        lean_name,
+        snippet,
+        area=area,
+        citation=citation,
+        informal_statement=informal_statement,
+        referee_report=referee_report,  # type: ignore[arg-type]
+        sanity_snippet=sanity_snippet,
+        confirmed=confirmed,
+        formal_root=Path(formal_root) if formal_root is not None else None,
+        run_gates=run_gates,
+        source_claim=source_claim,
+    )

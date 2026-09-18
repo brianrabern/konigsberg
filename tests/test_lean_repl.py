@@ -124,6 +124,32 @@ def test_send_new_env_does_not_thread_env():
         assert gs.raw["recv_env"] is None  # import must NOT carry an env field
 
 
+FAKE_REPL_EXIT = r"""
+import sys, json
+buf = ""
+for line in sys.stdin:
+    if line.strip() == "":
+        if buf.strip():
+            print(json.dumps({"env": 0, "messages": [], "sorries": []}), flush=True)
+            print(flush=True)
+            sys.exit(0)
+    else:
+        buf += line
+"""
+
+
+def test_stdout_closed_kills_process_so_restart_works():
+    repl = LeanREPL(repl_cmd=[sys.executable, "-c", FAKE_REPL_EXIT], timeout_s=5)
+    repl.start()
+    assert repl.send("first").ok
+    with pytest.raises(LeanREPLError, match="stdout closed|not running|stdin write"):
+        repl.send("second")
+    assert repl._proc is None
+    repl.restart()
+    assert repl.send("after-restart").ok
+    repl.close()
+
+
 def test_timeout_kills_the_process():
     repl = LeanREPL(
         repl_cmd=[sys.executable, "-c", "import time; time.sleep(30)"],

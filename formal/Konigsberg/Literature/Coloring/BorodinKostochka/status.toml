@@ -1,0 +1,9 @@
+[entry]
+name = "BorodinKostochka"
+citation = "O.V. Borodin, A.V. Kostochka, On an upper bound of a graph's chromatic number, J. Comb. Theory Ser. B 23 (1977) 247–250"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.BorodinKostochka.borodinKostochka"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

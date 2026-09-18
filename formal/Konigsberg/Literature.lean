@@ -8,6 +8,18 @@ import Konigsberg.Literature.Coloring.BasicIrreducible.Statements
 import Konigsberg.Literature.Coloring.BasicIrreducible.Proofs
 import Konigsberg.Literature.Coloring.BasicIrreducible.SanityChecks
 
+import Konigsberg.Literature.Coloring.BK_ReducibleOfFChoosable.Statements
+import Konigsberg.Literature.Coloring.BK_ReducibleOfFChoosable.Proofs
+import Konigsberg.Literature.Coloring.BK_ReducibleOfFChoosable.SanityChecks
+
+import Konigsberg.Literature.Coloring.BK_DischargingClosure.Statements
+import Konigsberg.Literature.Coloring.BK_DischargingClosure.Proofs
+import Konigsberg.Literature.Coloring.BK_DischargingClosure.SanityChecks
+
+import Konigsberg.Literature.Coloring.BorodinKostochka.Statements
+import Konigsberg.Literature.Coloring.BorodinKostochka.Proofs
+import Konigsberg.Literature.Coloring.BorodinKostochka.SanityChecks
+
 import Konigsberg.Literature.Coloring.BrooksListForm.Statements
 import Konigsberg.Literature.Coloring.BrooksListForm.Proofs
 import Konigsberg.Literature.Coloring.BrooksListForm.SanityChecks
@@ -15,6 +27,30 @@ import Konigsberg.Literature.Coloring.BrooksListForm.SanityChecks
 import Konigsberg.Literature.Coloring.CombinatorialNullstellensatz.Statements
 import Konigsberg.Literature.Coloring.CombinatorialNullstellensatz.Proofs
 import Konigsberg.Literature.Coloring.CombinatorialNullstellensatz.SanityChecks
+
+import Konigsberg.Literature.Coloring.CompleteGraphKCritical.Statements
+import Konigsberg.Literature.Coloring.CompleteGraphKCritical.Proofs
+import Konigsberg.Literature.Coloring.CompleteGraphKCritical.SanityChecks
+
+import Konigsberg.Literature.Coloring.CranstonLafayetteRabern_P5GemFreeBK.Statements
+import Konigsberg.Literature.Coloring.CranstonLafayetteRabern_P5GemFreeBK.Proofs
+import Konigsberg.Literature.Coloring.CranstonLafayetteRabern_P5GemFreeBK.SanityChecks
+
+import Konigsberg.Literature.Coloring.CranstonRabern_BKEquivalentConjectures.Statements
+import Konigsberg.Literature.Coloring.CranstonRabern_BKEquivalentConjectures.Proofs
+import Konigsberg.Literature.Coloring.CranstonRabern_BKEquivalentConjectures.SanityChecks
+
+import Konigsberg.Literature.Coloring.CranstonRabern_BrooksAndBeyond.Statements
+import Konigsberg.Literature.Coloring.CranstonRabern_BrooksAndBeyond.Proofs
+import Konigsberg.Literature.Coloring.CranstonRabern_BrooksAndBeyond.SanityChecks
+
+import Konigsberg.Literature.Coloring.CranstonRabern_ChiEqDeltaBigCliques.Statements
+import Konigsberg.Literature.Coloring.CranstonRabern_ChiEqDeltaBigCliques.Proofs
+import Konigsberg.Literature.Coloring.CranstonRabern_ChiEqDeltaBigCliques.SanityChecks
+
+import Konigsberg.Literature.Coloring.CranstonRabern_ClawFreeBK.Statements
+import Konigsberg.Literature.Coloring.CranstonRabern_ClawFreeBK.Proofs
+import Konigsberg.Literature.Coloring.CranstonRabern_ClawFreeBK.SanityChecks
 
 import Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.Statements
 import Konigsberg.Literature.Coloring.CranstonRabern_ImprovedEdgeBound.Proofs
@@ -63,6 +99,13 @@ import Konigsberg.Literature.Coloring.RabernBook_SecondListBound.SanityChecks
 import Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.Statements
 import Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.Proofs
 import Konigsberg.Literature.Coloring.Rabern_4ListCriticalEdgeBound.SanityChecks
+
+import Konigsberg.Literature.Coloring.Rabern_HittingMaxCliques.Statements
+import Konigsberg.Literature.Coloring.Rabern_HittingMaxCliques.Proofs
+import Konigsberg.Literature.Coloring.Rabern_HittingMaxCliques.SanityChecks
+
+import Konigsberg.Literature.Coloring.Reed_BKLargeDelta.Statements
+import Konigsberg.Literature.Coloring.Reed_BKLargeDelta.SanityChecks
 
 import Konigsberg.Literature.Coloring.SchauzCoefficient.Statements
 import Konigsberg.Literature.Coloring.SchauzCoefficient.Proofs

@@ -11,10 +11,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-providers = ["anthropic>=0.40"] # model routing (open decision #5)
+providers = ["anthropic>=0.40"] # Claude; llama.cpp/OpenAI-compat needs no extra
 
 [project.scripts]
 konigsberg = "konigsberg_harness.repl:main"
+konig = "konigsberg_harness.repl:main"
 
 [build-system]
 requires = ["hatchling"]

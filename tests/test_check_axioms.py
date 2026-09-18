@@ -54,8 +54,33 @@ def test_modules_from_sibling_lean_files(tmp_path: Path):
     mods = ca.modules_for_status(status, root)
     assert mods == [
         "Konigsberg.Literature.Coloring.Author_Result.Proofs",
-        "Konigsberg.Literature.Coloring.Author_Result.Statements",
     ]
+
+
+def test_modules_skip_sanity_checks_when_proofs_present(tmp_path: Path):
+    root = tmp_path / "formal"
+    entry = root / "Konigsberg" / "Literature" / "Coloring" / "Author_Result"
+    entry.mkdir(parents=True)
+    (entry / "Statements.lean").write_text("")
+    (entry / "Proofs.lean").write_text("")
+    (entry / "SanityChecks.lean").write_text("")
+    status = entry / "status.toml"
+    status.write_text("")
+    mods = ca.modules_for_status(status, root)
+    assert mods == ["Konigsberg.Literature.Coloring.Author_Result.Proofs"]
+    assert not any("SanityChecks" in m for m in mods)
+
+
+def test_modules_statements_when_no_proofs(tmp_path: Path):
+    root = tmp_path / "formal"
+    entry = root / "Konigsberg" / "Literature" / "Coloring" / "Author_Result"
+    entry.mkdir(parents=True)
+    (entry / "Statements.lean").write_text("")
+    (entry / "SanityChecks.lean").write_text("")
+    status = entry / "status.toml"
+    status.write_text("")
+    mods = ca.modules_for_status(status, root)
+    assert mods == ["Konigsberg.Literature.Coloring.Author_Result.Statements"]
 
 
 def test_modules_fallback_to_root_when_no_local_lean(tmp_path: Path):
@@ -151,6 +176,9 @@ def test_main_run_lean_detects_drift(tmp_path: Path, monkeypatch):
         def axioms(self, name):
             return ["propext", "sorryAx"]  # live != recorded, and non-whitelisted
 
+        def recover(self):
+            pass
+
         def close(self):
             pass
 
@@ -172,6 +200,9 @@ def test_main_run_lean_passes_when_live_matches_and_clean(tmp_path: Path, monkey
 
         def axioms(self, name):
             return ["propext"]
+
+        def recover(self):
+            pass
 
         def close(self):
             pass

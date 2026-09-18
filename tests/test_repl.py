@@ -14,7 +14,7 @@ class StubREPL:
     def __init__(self, gs: GoalState):
         self._gs = gs
 
-    def send(self, snippet, *, timeout_s=None, new_env=False) -> GoalState:
+    def send(self, snippet, *, timeout_s=None, new_env=False, commit=True) -> GoalState:
         return self._gs
 
 
@@ -24,6 +24,7 @@ class _NoteArgs(BaseModel):
 
 _EMPIRICAL = {
     "literature_search",
+    "arxiv_search",
     "counterexample_search",
     "choosability_refute",
     "alon_tarsi",
@@ -34,7 +35,12 @@ _EMPIRICAL = {
     "chromatic_number",
     "bk_predicate",
     "bk_search",
+    "reed_predicate",
+    "reed_sweep",
     "list_critical",
+    "reducible_configuration",
+    "discharging_unavoidable",
+    "campaign_status",
 } | set(FUNDAMENTAL_TOOL_NAMES)
 
 _FORMAL = {
@@ -42,7 +48,12 @@ _FORMAL = {
     "lean_typecheck_statement",
     "lean_search",
     "lean_prove",
+    "lean_add_to_library",
+    "lemma_list",
+    "lemma_read",
     "verify_coloring",
+    "reset_env",
+    "retract",
 }
 
 _ALL_TOOLS = _EMPIRICAL | _FORMAL
@@ -105,6 +116,9 @@ def test_slash_ledger_tools_compact(tmp_path, capsys):
     assert "note" in out
     assert "hunch" in out or "conjectured" in out
     assert "/claim" in out or "claim" in out.lower()
+    assert "/hunt" in out
+    assert "/forever" in out
+    assert "/lemmas" in out
     # Custom registry without formal tools → unavailable header.
     assert "formal tier: unavailable" in out
 

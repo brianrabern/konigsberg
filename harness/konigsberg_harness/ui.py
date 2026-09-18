@@ -5,9 +5,11 @@ the prompt, and compact live tool lines. Uses Rich when stdout is a TTY.
 """
 from __future__ import annotations
 
+import itertools
 import json
 import os
 import re
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -23,6 +25,7 @@ from rich.theme import Theme
 from .agent import (
     AssistantFinal,
     ClaimMinted,
+    HuntContinued,
     Interrupted,
     ModelThinking,
     ToolCallProposed,
@@ -95,17 +98,18 @@ def _mark_text() -> Text:
 
 
 def _short_model_name(model_id: str) -> str:
-    """claude-sonnet-4-5-20250929 → sonnet-4.5"""
+    """claude-sonnet-4-5-20250929 → sonnet-4.5; GGUF paths → basename."""
     m = re.search(
         r"(sonnet|haiku|opus)[-_]?(\d+)[-_.]?(\d+)?",
         model_id,
         flags=re.IGNORECASE,
     )
-    if not m:
-        return model_id
-    family = m.group(1).lower()
-    major, minor = m.group(2), m.group(3) or "0"
-    return f"{family}-{major}.{minor}"
+    if m:
+        family = m.group(1).lower()
+        major, minor = m.group(2), m.group(3) or "0"
+        return f"{family}-{major}.{minor}"
+    name = Path(model_id).name.removesuffix(".gguf")
+    return name[:40] if len(name) > 40 else name
 
 
 def empirical_ready() -> bool:
@@ -129,13 +133,13 @@ def geng_ready() -> bool:
 
 
 def model_status_label() -> str:
-    """Short frontier model id when live; ``offline`` when scripted / no key."""
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        return "offline"
+    """Short frontier model id when live; ``offline`` when scripted / no provider."""
     try:
-        from .models import _default_frontier_id
+        from .models import default_frontier_id, live_provider
 
-        return _short_model_name(_default_frontier_id())
+        if live_provider() is None:
+            return "offline"
+        return _short_model_name(default_frontier_id())
     except Exception:  # noqa: BLE001
         return "offline"
 
@@ -225,6 +229,80 @@ def _fmt_args(args: dict) -> str:
     return _truncate(raw, 90)
 
 
+# Contextual status verbs — one per tool so the spinner names the actual activity
+# ("Contracting…" while taking a minor), plus a rotation for pure reasoning turns.
+_TOOL_VERBS: dict[str, str] = {
+    # construction / io
+    "make_graph": "Constructing", "graph6_encode": "Encoding", "graph6_decode": "Decoding",
+    # inspection / basic getters
+    "describe_graph": "Inspecting",
+    "order": "Getting", "size": "Getting", "degree_sequence": "Getting",
+    "min_degree": "Getting", "average_degree": "Getting", "max_degree": "Getting",
+    "neighbors": "Getting",
+    # connectivity / measures / checks / counts
+    "is_connected": "Probing", "num_components": "Probing", "components": "Probing",
+    "vertex_connectivity": "Probing", "edge_connectivity": "Probing",
+    "is_k_connected": "Probing",
+    "girth": "Measuring", "diameter": "Measuring", "radius": "Measuring",
+    "eccentricity": "Measuring",
+    "is_bipartite": "Checking", "is_tree": "Checking", "is_forest": "Checking",
+    "is_regular": "Checking", "is_planar": "Checking", "is_eulerian": "Checking",
+    "has_eulerian_path": "Checking",
+    "triangle_count": "Counting", "transitivity": "Counting",
+    "degeneracy": "Peeling", "k_core_number": "Peeling", "k_core": "Peeling",
+    "independence_number": "Packing", "matching_number": "Matching",
+    "clique_number": "Searching",
+    # structural transforms
+    "complement": "Complementing",
+    "induced_subgraph": "Pruning", "delete_vertex": "Pruning",
+    "delete_vertices": "Pruning", "delete_edge": "Pruning", "delete_edges": "Pruning",
+    "add_edge": "Adding", "add_vertex": "Adding",
+    "contract_edge": "Contracting", "contains_minor": "Contracting",
+    "line_graph": "Transforming",
+    "disjoint_union": "Combining", "union": "Combining", "join": "Combining",
+    "cartesian_product": "Combining", "tensor_product": "Combining",
+    # relations
+    "is_isomorphic": "Matching", "could_be_isomorphic": "Matching",
+    "is_subgraph": "Embedding", "is_induced_subgraph": "Embedding",
+    "contains_clique": "Searching", "contains_cycle": "Searching",
+    "contains_path": "Searching",
+    # paths / traversal
+    "distance": "Walking", "shortest_path": "Walking",
+    "bfs_order": "Traversing", "dfs_order": "Traversing", "spanning_tree": "Spanning",
+    # generators / search
+    "enumerate_graphs": "Enumerating", "random_graph": "Sampling",
+    "bk_search": "Hunting", "counterexample_search": "Hunting",
+    # coloring / choosability
+    "choosability_refute": "Refuting", "alon_tarsi": "Orienting",
+    "fixer_breaker": "Playing", "decide_colorable": "Coloring",
+    "chromatic_number": "Bounding", "bk_predicate": "Testing",
+    "list_critical": "Testing", "verify_coloring": "Certifying",
+    "reducible_configuration": "Reducing",
+    "discharging_unavoidable": "Discharging",
+    "campaign_status": "Reviewing",
+    # formal
+    "lean_check": "Checking", "lean_typecheck_statement": "Checking",
+    "lean_search": "Searching", "lean_prove": "Proving",
+    "lean_add_to_library": "Promoting",
+    "lemma_list": "Recalling", "lemma_read": "Recalling",
+    "reset_env": "Resetting", "retract": "Retracting",
+    # literature
+    "literature_search": "Combing", "arxiv_search": "Combing",
+}
+
+# Rotation for reasoning turns (when the model emits the default "Thinking…").
+_THINKING_VERBS = (
+    "Thinking…", "Reasoning…", "Pondering…", "Conjecturing…",
+    "Connecting…", "Chasing…", "Circling…", "Musing…",
+)
+_thinking_cycle = itertools.cycle(_THINKING_VERBS)
+
+
+def verb_for_tool(name: str) -> str:
+    """Contextual spinner label for a tool call, e.g. 'Contracting…'."""
+    return f"{_TOOL_VERBS.get(name, 'Computing')}…"
+
+
 def banner(
     session_id: str,
     formal_label: str = "",
@@ -262,7 +340,10 @@ def banner(
 def render_event(event: object, spinner: Spinner) -> None:
     """Render one agent event; drive ``spinner`` across ModelThinking gaps."""
     if isinstance(event, ModelThinking):
-        spinner.show(event.message)
+        # Rotate through research verbs on a plain reasoning turn; honor a
+        # specific message if the agent set one.
+        msg = next(_thinking_cycle) if event.message == "Thinking…" else event.message
+        spinner.show(msg)
         return
 
     spinner.stop()
@@ -275,7 +356,7 @@ def render_event(event: object, spinner: Spinner) -> None:
         t.append(" ", style="kg.dim")
         t.append(_fmt_args(c.args), style="kg.dim")
         console.print(t)
-        spinner.show(f"Running {c.name}…")
+        spinner.show(verb_for_tool(c.name))
     elif isinstance(event, ToolResult):
         if event.unavailable:
             console.print()
@@ -303,6 +384,12 @@ def render_event(event: object, spinner: Spinner) -> None:
         console.print()
         console.print(Text("interrupted — session saved", style="kg.dim"))
         console.print()
+    elif isinstance(event, HuntContinued):
+        t = Text()
+        t.append("  hunt  ", style="kg.dim")
+        t.append("continuing (no lean_prove yet)", style="kg.dim")
+        console.print(t)
+        spinner.show("Hunting…")
 
 
 def _render_final(text: str) -> None:
@@ -400,12 +487,32 @@ def prompt_label() -> Text:
     return Text("> ", style="kg.prompt")
 
 
+def _harden_stdin() -> None:
+    """Tolerate non-UTF-8 stdin bytes (odd pastes/locales) so a bad keystroke
+    can't crash the whole REPL. Undecodable bytes become U+FFFD, not an exception."""
+    try:  # pragma: no cover - depends on the runtime stream type
+        sys.stdin.reconfigure(encoding="utf-8", errors="replace")  # type: ignore[union-attr]
+    except (AttributeError, ValueError, OSError):
+        pass
+
+
+_harden_stdin()
+
+
 def read_line(*, hint: bool = False) -> str:
-    """Rule + `>` prompt; optional dim hint (Claude Code placeholder analogue)."""
+    """Rule + `>` prompt; optional dim hint (Claude Code placeholder analogue).
+
+    A single undecodable line is skipped, never fatal — a bad paste shouldn't end
+    the session.
+    """
     prompt_rule()
     if hint:
         console.print(Text('  Try "Is C₅ 2-choosable?" or /help', style="kg.dim"))
-    return console.input(prompt_label()).strip()
+    try:
+        return console.input(prompt_label()).strip()
+    except UnicodeDecodeError:
+        warn("input had bytes I couldn't decode — line skipped, try again")
+        return ""
 
 
 def format_args_preview(args: dict[str, Any]) -> str:

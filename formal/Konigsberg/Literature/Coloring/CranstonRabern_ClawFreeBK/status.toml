@@ -1,0 +1,14 @@
+[entry]
+name = "CranstonRabern_ClawFreeBK"
+citation = "D. W. Cranston, L. Rabern, Coloring claw-free graphs with Δ−1 colors, SIAM J. Discrete Math. 27 (2013) 534–549; arXiv:1206.1269"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_ClawFreeBK.clawFree_BK"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_ClawFreeBK.clawFree_chi_ge_delta_contains_K_delta"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

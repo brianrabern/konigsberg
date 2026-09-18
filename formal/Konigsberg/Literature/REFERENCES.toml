@@ -1,0 +1,101 @@
+# Curated statements from the literature — cited precisely, but NOT formalized
+# or verified inside Konigsberg. Status: "literature" (cited, not verified here).
+#
+# Purpose: give the agent a trustworthy, OFFLINE source for the exact statement of
+# a known theorem/conjecture, so pinning a statement does not depend on a live
+# arXiv call. literature_search surfaces these under References with the honest
+# status "literature (cited, not verified here)" — never as an established Claim,
+# never as a formalized/stated corpus theorem.
+#
+# Discipline: every entry carries an exact statement and a citation. Do NOT add a
+# statement you cannot source. These are external knowledge, not results Konigsberg
+# has checked.
+
+[[reference]]
+name = "Rabern_HittingMaxCliques"
+area = "coloring"
+kind = "theorem"
+citation = "L. Rabern, On hitting all maximum cliques with an independent set, J. Graph Theory 66 (2011) 32–37; arXiv:0907.3705"
+source = "https://arxiv.org/abs/0907.3705"
+statement = "If ω(G) ≥ (3/4)(Δ(G)+1), then G has an independent set I with ω(G−I) < ω(G) — equivalently, an independent set meeting every maximum clique. (Used to bound a minimum counterexample to Reed's conjecture.) NOTE: the threshold constant is 3/4, NOT 2/3 (the 2/3 bound is the separate clique-intersection result). The sharp constant is open: the extremal failing family C₅[K_r] sits at ω/(Δ+1)=2/3, and King (arXiv:0911.1741) improved Rabern's 3/4 via lopsided independent transversals."
+
+[[reference]]
+name = "King_HittingMaxCliques_Lopsided"
+area = "coloring"
+kind = "theorem"
+citation = "A. King, Hitting all maximum cliques with a stable set using lopsided independent transversals, J. Graph Theory 67 (2011) 300–305; arXiv:0911.1741"
+source = "https://arxiv.org/abs/0911.1741"
+statement = "Improves Rabern's threshold for the existence of an independent set hitting all maximum cliques, via lopsided independent transversals (Haxell-type conditions). Consult the paper for the exact improved constant before relying on it; the sharp value of c in 'ω ≥ c(Δ+1) ⟹ hitting set' remains the open problem ('hitting every large maximal clique with a stable set')."
+
+[[reference]]
+name = "ReedConjecture"
+area = "coloring"
+kind = "conjecture"
+citation = "B. Reed, ω, Δ, and χ, J. Graph Theory 27 (1998) 177–212"
+source = ""
+statement = "Every graph satisfies χ(G) ≤ ⌈(Δ(G)+ω(G)+1)/2⌉. Open in general; proved for sufficiently large Δ."
+
+[[reference]]
+name = "BorodinKostochka"
+area = "coloring"
+kind = "conjecture"
+citation = "O.V. Borodin, A.V. Kostochka, On an upper bound of a graph's chromatic number, J. Comb. Theory Ser. B 23 (1977) 247–250"
+source = ""
+statement = "Every graph with Δ(G) ≥ 9 satisfies χ(G) ≤ max{Δ(G)−1, ω(G)}. Open; Reed proved it for Δ ≥ 10^14. The live regime is Δ = 9."
+
+[[reference]]
+name = "BrooksTheorem"
+area = "coloring"
+kind = "theorem"
+citation = "R.L. Brooks, On colouring the nodes of a network, Proc. Cambridge Philos. Soc. 37 (1941) 194–197"
+source = ""
+statement = "A connected graph G satisfies χ(G) ≤ Δ(G) unless G is a complete graph or an odd cycle, in which case χ(G) = Δ(G)+1."
+
+[[reference]]
+name = "Rabern_Dissertation"
+area = "coloring"
+kind = "dissertation"
+citation = "L. Rabern, Coloring graphs from almost maximum degree sized palettes, Ph.D. dissertation, Arizona State University, 2013 (advisor H. A. Kierstead)"
+source = "https://hdl.handle.net/2286/R.I.17753"
+statement = "A BK-focused thesis (not a single theorem). Attacks χ ≤ max{Δ−1, ω} for Δ ≥ 9 by several techniques: Catlin-style vertex shuffling (BK when the high-vertex subgraph is edgeless); Kostochka's reduction to Δ = 9 plus independent transversals hitting maximum cliques; list-coloring exclusion of induced subgraphs, especially the classification of f-choosable joins A ∗ B with f(v) = d(v)−1; BK for claw-free graphs via the Chudnovsky–Seymour quasi-line structure theorem; adding edges in a minimum counterexample; Haxell / Aharoni–Berger–Ziv recoloring (BK when every vertex lies in a large clique); Reed-style probabilistic coloring, adapted to list-BK for large Δ. Later papers are the published form of several chapters; use those for theorem-level citations. Do not treat this document as a proved claim."
+
+[[reference]]
+name = "CranstonRabern_ClawFreeBK"
+area = "coloring"
+kind = "theorem"
+citation = "D. W. Cranston, L. Rabern, Coloring claw-free graphs with Δ−1 colors, SIAM J. Discrete Math. 27 (2013) 534–549; arXiv:1206.1269"
+source = "https://arxiv.org/abs/1206.1269"
+statement = "Every claw-free graph G with Δ(G) ≥ 9 satisfies χ(G) ≤ max{ω(G), Δ(G)−1}. Equivalently: every claw-free graph with χ ≥ Δ ≥ 9 contains a K_Δ."
+
+[[reference]]
+name = "CranstonLafayetteRabern_P5GemFreeBK"
+area = "coloring"
+kind = "theorem"
+citation = "D. W. Cranston, H. Lafayette, L. Rabern, Coloring (P₅, gem)-free graphs with Δ−1 colors, J. Graph Theory 101 (2022) 633–642; arXiv:2006.02015"
+source = "https://arxiv.org/abs/2006.02015"
+statement = "Every (P₅, gem)-free graph G with Δ(G) ≥ 9 satisfies χ(G) ≤ max{ω(G), Δ(G)−1}, where gem = K₁ ∨ P₄. Equivalently: BK holds for graphs with no induced P₅ and no induced gem."
+
+[[reference]]
+name = "CranstonRabern_ListClawFreeBK"
+area = "coloring"
+kind = "theorem"
+citation = "D. W. Cranston, L. Rabern, List-coloring claw-free graphs with Δ−1 colors, SIAM J. Discrete Math. 31 (2017) 726–748; arXiv:1508.03574"
+source = "https://arxiv.org/abs/1508.03574"
+statement = "If G is a quasi-line graph with Δ(G) > ω(G) and Δ(G) ≥ 69, then χ_OL(G) ≤ Δ(G)−1. Together with earlier work, this implies: if G is claw-free with Δ(G) > ω(G) and Δ(G) ≥ 69, then χ_ℓ(G) ≤ Δ(G)−1. (List-BK for claw-free graphs, only for Δ ≥ 69 — not the Δ = 9 chromatic case.)"
+
+[[reference]]
+name = "Rabern_DoublyCriticalEdgeBK"
+area = "coloring"
+kind = "theorem"
+citation = "L. Rabern, The Borodin–Kostochka conjecture for graphs containing a doubly critical edge, Electron. J. Combin. 14 (2007), #N22"
+source = "https://doi.org/10.37236/1023"
+statement = "If G contains a doubly critical edge and satisfies χ(G) ≥ Δ(G) ≥ 6, then G contains a K_Δ. (A doubly critical edge is an edge e = xy such that χ(G − x) = χ(G − y) = χ(G) − 1; equivalently, both endpoints are critical vertices.)"
+
+[[reference]]
+name = "CranstonRabern_BrooksAndBeyond"
+area = "coloring"
+kind = "survey"
+citation = "D. W. Cranston, L. Rabern, Brooks' Theorem and Beyond, J. Graph Theory 80 (2015) 199–225; arXiv:1403.0479"
+source = "https://arxiv.org/abs/1403.0479"
+statement = "Survey of proofs of Brooks' theorem (greedy, Kempe chains, hitting sets, Kernel Lemma) and of the list / online-list / Alon–Tarsi analogues. Preferred formulation: every graph satisfies χ ≤ max{3, ω, Δ}. Journal Theorem 8.3 / arXiv Theorem 10: χ_ℓ ≤ max{3, ω, Δ}. Journal Theorem 9.1 / arXiv Theorem 11: a connected graph is degree-choosable iff it is not a Gallai tree (already BrooksListForm). Journal Lemma 8.1 / arXiv Lemma 8: if G contains no K_{Δ+1} then α ≥ |G|/Δ — the arXiv wording omits Δ ≥ 3, which is required (odd cycles); the journal includes Δ > 2. Concludes with Borodin–Kostochka and Reed (not proved here). Not a single new theorem — pin numbered results from the paper or the stated Lean entry; do not treat the survey as a proved claim."
+

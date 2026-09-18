@@ -26,7 +26,7 @@ Three things distinguish it from a general coding agent:
 - Establish a trust model rigid enough that a mathematician can rely on the tool's claims.
 
 ### Explicit non-goals (v1)
-- **Autonomous proof of open conjectures.** Borodin–Kostochka is the north star, not the spec. The tool accelerates a human attack; it does not replace one.
+- **Autonomous proof of open conjectures.** Borodin–Kostochka is the north star, not the spec. The tool accelerates a human attack; it does not replace one. `--forever` is an instrumented search whose only settlement is a durable kernel proof of `borodinKostochka` (or a certified Δ ≥ 9 counterexample) — it does not retract this non-goal.
 - **Autoformalization of arbitrary papers.** Formalizing one research paper is months of expert work. Statements first, proofs incrementally.
 - **Interactive graph-drawing UI.** Deferred. Headless agent + library first.
 - **General graph theory coverage at launch.** Coloring only; other areas follow the template.

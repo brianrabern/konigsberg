@@ -1,0 +1,14 @@
+[entry]
+name = "CranstonRabern_BKEquivalentConjectures"
+citation = "D. W. Cranston, L. Rabern, Coloring a graph with Δ−1 colors: conjectures equivalent to the Borodin–Kostochka conjecture that appear weaker, European J. Combin. 44 (2015) 23–42; arXiv:1203.5380"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_BKEquivalentConjectures.equivalent_K3_join_E6"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_BKEquivalentConjectures.fChoosable_join_not_induced_in_critical"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

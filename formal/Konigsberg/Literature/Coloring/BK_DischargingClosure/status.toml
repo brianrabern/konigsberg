@@ -1,0 +1,14 @@
+[entry]
+name = "BK_DischargingClosure"
+citation = "Konigsberg discharging closure (reducible ∧ unavoidable ⇒ no D-critical K_D-free graph; BK at Δ=9)"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.BK_DischargingClosure.reducible_and_unavoidable_imp_no_counterexample"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.BK_DischargingClosure.borodinKostochka_at_nine"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

@@ -1,0 +1,10 @@
+[entry]
+name = "BK_ReducibleOfFChoosable"
+citation = "Konigsberg reducibility bridge (BK minimal counterexample / f-choosability)"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.BK_ReducibleOfFChoosable.reducible_of_fChoosable"
+status = "formalized"
+axioms = ["propext", "Classical.choice", "Quot.sound"]
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

@@ -1,4 +1,4 @@
-.PHONY: gates test lint sync deps lean-setup lean-smoke axioms-lean
+.PHONY: gates test lint sync deps lean-setup lean-smoke axioms-lean campaign
 
 sync:        ## install python packages (editable)
 	uv sync
@@ -6,13 +6,16 @@ sync:        ## install python packages (editable)
 deps:        ## python (uv sync) + system nauty/geng when missing
 	uv run python scripts/ensure_deps.py --yes
 
-gates:       ## run the trust gates (no Lean build needed)
-	python ci/self_test_audit.py
-	python ci/check_status.py formal
-	python ci/check_no_sorry.py formal
-	python ci/check_axioms.py formal
-	python ci/check_imports.py formal
-	python ci/check_conventions.py formal
+gates: sync  ## run the trust gates (no Lean build needed)
+	uv run python ci/self_test_audit.py
+	uv run python ci/referee_self_test.py
+	uv run python ci/reduction_self_test.py
+	uv run python ci/discharging_self_test.py
+	uv run python ci/check_status.py formal
+	uv run python ci/check_no_sorry.py formal
+	uv run python ci/check_axioms.py formal
+	uv run python ci/check_imports.py formal
+	uv run python ci/check_conventions.py formal
 
 test: sync   ## run python tests
 	uv run pytest
@@ -28,3 +31,6 @@ lean-smoke: sync  ## M0: verify the Lean env round-trips through the REPL
 
 axioms-lean: sync  ## authoritative axiom gate against a live Lean env
 	uv run python ci/check_axioms.py formal --run-lean
+
+campaign:  ## autonomous BK hunt until proved/disproved (needs a live model)
+	uv run konig --forever

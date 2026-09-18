@@ -1,0 +1,14 @@
+[entry]
+name = "CranstonRabern_ChiEqDeltaBigCliques"
+citation = "D. W. Cranston, L. Rabern, Graphs with χ = Δ have big cliques, SIAM J. Discrete Math. 29 (2015) 1792–1814; arXiv:1305.3526"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_ChiEqDeltaBigCliques.chi_ge_delta_implies_omega_ge_delta_sub_three"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CranstonRabern_ChiEqDeltaBigCliques.chi_ge_delta_omega_or_high"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

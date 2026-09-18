@@ -10,6 +10,7 @@ Retrieval never upgrades status and never mints ledger Claims.
 """
 from __future__ import annotations
 
+import re
 import tomllib
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -17,6 +18,7 @@ from typing import Any
 
 VALID_IN_TREE = frozenset({"formalized", "stated", "informal"})
 VALID_EXTERNAL = frozenset({"external-verified"})
+VALID_REFERENCE = frozenset({"literature"})
 
 
 @dataclass(frozen=True)
@@ -155,8 +157,41 @@ def _load_external_toml(path: Path) -> list[LiteratureEntry]:
     return out
 
 
+def _load_references_toml(path: Path) -> list[LiteratureEntry]:
+    """Curated literature statements: cited, precise, NOT verified in Konigsberg."""
+    data = _read_toml(path)
+    rows = data.get("reference", [])
+    if not isinstance(rows, list):
+        raise TypeError(f"{path}: expected [[reference]] array")
+    out: list[LiteratureEntry] = []
+    for i, row in enumerate(rows):
+        if not isinstance(row, dict):
+            raise TypeError(f"{path}: reference[{i}] not a table")
+        for key in ("name", "citation", "area", "statement"):
+            if not row.get(key):
+                raise ValueError(f"{path}: reference[{i}] missing '{key}'")
+        claim = {
+            "lean_name": "",  # not formalized
+            "status": "literature",  # cited, not verified here
+            "statement": str(row["statement"]),
+            "kind": str(row.get("kind", "theorem")),
+            "source": str(row.get("source", "")),
+        }
+        out.append(
+            LiteratureEntry(
+                name=str(row["name"]),
+                citation=str(row["citation"]),
+                area=str(row["area"]),
+                claims=[claim],
+                notes=str(row["statement"]),  # so search matches the statement text
+                source="literature",
+            )
+        )
+    return out
+
+
 def library_map(root: Path | str | None = None) -> list[LiteratureEntry]:
-    """Parse every status.toml + EXTERNAL.toml into a serializable catalog."""
+    """Parse status.toml + EXTERNAL.toml + REFERENCES.toml into a catalog."""
     lit = Path(root) if root is not None else default_literature_root()
     if not lit.is_dir():
         raise FileNotFoundError(f"literature root not found: {lit}")
@@ -168,10 +203,19 @@ def library_map(root: Path | str | None = None) -> list[LiteratureEntry]:
     external_path = lit / "EXTERNAL.toml"
     if external_path.is_file():
         entries.extend(_load_external_toml(external_path))
+
+    references_path = lit / "REFERENCES.toml"
+    if references_path.is_file():
+        entries.extend(_load_references_toml(references_path))
     return entries
 
 
 def _provenance(entry: LiteratureEntry, claim: dict[str, Any]) -> str:
+    if entry.source == "literature":
+        src = claim.get("source", "")
+        kind = claim.get("kind", "")
+        parts = [p for p in (f"kind={kind}" if kind else "", src) if p]
+        return "; ".join(parts) or "cited from literature"
     if entry.source == "external":
         parts = [
             f"repo={claim.get('repo', '')}",
@@ -209,6 +253,16 @@ def _score(query: str, entry: LiteratureEntry, claim: dict[str, Any]) -> int | N
         return 30
     if q in notes:
         return 10
+
+    # Token fallback: natural multi-word queries (e.g. "hitting maximum cliques"
+    # vs the citation "on hitting ALL maximum cliques") won't match as a contiguous
+    # substring. Score by how many query tokens appear across the searchable text.
+    tokens = [t for t in re.split(r"[^a-z0-9]+", q) if len(t) >= 3]
+    if len(tokens) >= 2:
+        hay = " ".join((name, short, cite, area, notes))
+        present = sum(1 for t in tokens if t in hay)
+        if present >= 2 and present >= (len(tokens) + 1) // 2:
+            return min(25, 4 + 3 * present)  # ranked below exact substring hits
     return None
 
 

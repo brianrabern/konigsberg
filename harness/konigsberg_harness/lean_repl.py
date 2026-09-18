@@ -45,6 +45,7 @@ import subprocess
 import threading
 import time
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -61,12 +62,61 @@ DEFAULT_REPL_CMD: tuple[str, ...] = ("lake", "exe", "repl")
 # Same library surface as smoke_lean / check_axioms --run-lean (`import Konigsberg`),
 # plus Mathlib.Tactic (omega, rfl helpers, …) and the opens graph-theory snippets
 # expect. Do NOT `import Mathlib` wholesale — that blocks REPL startup for minutes.
+#
+# `import Konigsberg` sees Literature theorems only if the barrel oleans are
+# current. `load_preamble` rebuilds Konigsberg when sources are newer than
+# Konigsberg.olean — otherwise #check of a stated corpus lemma is
+# `Unknown identifier` even though the .lean file exists.
 DEFAULT_SCRATCH_PREAMBLE = """\
 import Konigsberg
 import Mathlib.Tactic
 open SimpleGraph Finset Function
 open Konigsberg.Areas.Coloring
 """
+
+
+def library_oleans_stale(project_dir: str | Path) -> bool:
+    """True when Konigsberg/*.lean is newer than the root olean (or it is missing).
+
+    The REPL loads compiled oleans, not source. A stale ``Konigsberg.Literature``
+    barrel hides theorems that exist on disk.
+    """
+    root = Path(project_dir)
+    olean = root / ".lake" / "build" / "lib" / "lean" / "Konigsberg.olean"
+    if not olean.is_file():
+        return True
+    stamp = olean.stat().st_mtime
+    sources = [root / "Konigsberg.lean"]
+    src_dir = root / "Konigsberg"
+    if src_dir.is_dir():
+        sources.extend(src_dir.rglob("*.lean"))
+    return any(p.is_file() and p.stat().st_mtime > stamp for p in sources)
+
+
+def ensure_library_oleans(project_dir: str | Path, *, timeout_s: float = 600) -> bool:
+    """``lake build Konigsberg`` when oleans are stale. Returns whether it ran."""
+    if not library_oleans_stale(project_dir):
+        return False
+    from . import ui as _ui
+
+    _ui.info("oleans stale — lake build Konigsberg…")
+    try:
+        proc = subprocess.run(
+            ["lake", "build", "Konigsberg"],
+            cwd=str(project_dir),
+            capture_output=True,
+            text=True,
+            timeout=timeout_s,
+            check=False,
+        )
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        raise LeanREPLError(f"lake build Konigsberg failed to start: {e}") from e
+    if proc.returncode != 0:
+        tail = (proc.stderr or proc.stdout or "").strip().splitlines()[-20:]
+        raise LeanREPLError(
+            "lake build Konigsberg failed:\n" + "\n".join(tail)
+        )
+    return True
 
 # Cap stderr retained for diagnostics so a chatty/looping process can't grow the
 # buffer without bound.
@@ -145,6 +195,8 @@ class LeanREPL:
         self._err_lines: list[str] = []
         self._env: int | None = None  # id of the current live environment
         self._preamble_loaded: bool = False
+        # Snippets successfully committed after the preamble (for retract rebuild).
+        self._session_cmds: list[str] = []
 
     # -- lifecycle ---------------------------------------------------------
 
@@ -164,6 +216,7 @@ class LeanREPL:
         self._err_lines = []
         self._env = None
         self._preamble_loaded = False
+        self._session_cmds = []
         threading.Thread(target=self._pump_stdout, daemon=True).start()
         threading.Thread(target=self._pump_stderr, daemon=True).start()
 
@@ -184,27 +237,107 @@ class LeanREPL:
     # -- public API --------------------------------------------------------
 
     def send(
-        self, snippet: str, *, timeout_s: float | None = None, new_env: bool = False
+        self,
+        snippet: str,
+        *,
+        timeout_s: float | None = None,
+        new_env: bool = False,
+        commit: bool = True,
     ) -> GoalState:
         """Elaborate `snippet` against the live environment; return goals+errors.
 
-        The current env id is sent WITH the command and the returned one is kept,
-        so state is live (a `def` here is visible to a `theorem` next). Pass
-        `new_env=True` to run in a fresh environment instead — required for
-        `import` commands, which the REPL only accepts when no env is specified.
+        The current env id is sent WITH the command and the returned one is kept
+        when ``commit=True`` (default), so state is live (a `def` here is visible
+        to a `theorem` next). Pass ``commit=False`` to leave the session env
+        pointer unchanged (scratch evaluation). Pass ``new_env=True`` to run in a
+        fresh environment instead — required for `import` commands, which the REPL
+        only accepts when no env is specified.
         On timeout the process is killed and LeanREPLTimeout is raised — see the
         module docstring.
         """
         if new_env:
             # Fresh env drops prior imports (and the scratch preamble).
             self._preamble_loaded = False
+            self._session_cmds = []
         payload: dict = {"cmd": snippet}
         if not new_env and self._env is not None:
             payload["env"] = self._env
         resp = self._request(payload, timeout_s)
-        if "env" in resp:
+        state = _to_goal_state(resp)
+        if commit and "env" in resp:
             self._env = resp["env"]
-        return _to_goal_state(resp)
+        return state
+
+    def send_transactional(
+        self, snippet: str, *, timeout_s: float | None = None
+    ) -> GoalState:
+        """Elaborate against the live env; commit the new env id only on success.
+
+        A failed or partial elaboration leaves the session env pointer unchanged,
+        so poisoned stubs (e.g. sorryAx decls) do not stick.
+        """
+        state = self.send(snippet, timeout_s=timeout_s, commit=False)
+        if state.ok and state.env is not None:
+            self._env = state.env
+            self._session_cmds.append(snippet)
+        return state
+
+    def snapshot(self) -> tuple[int | None, bool, tuple[str, ...]]:
+        """Return (env_id, preamble_loaded, session_cmds) for later restore."""
+        return self._env, self._preamble_loaded, tuple(self._session_cmds)
+
+    def restore(self, snap: tuple[int | None, bool, tuple[str, ...]]) -> None:
+        """Restore a prior session env pointer (does not re-run Lean)."""
+        env, preamble, cmds = snap
+        self._env = env
+        self._preamble_loaded = preamble
+        self._session_cmds = list(cmds)
+
+    def reset_env(
+        self,
+        preamble: str | None = None,
+        *,
+        timeout_s: float | None = None,
+    ) -> GoalState:
+        """Drop all session declarations; return to a clean corpus preamble."""
+        return self.load_preamble(preamble, timeout_s=timeout_s)
+
+    def retract(
+        self,
+        name: str,
+        *,
+        timeout_s: float | None = None,
+    ) -> GoalState:
+        """Drop session decls whose snippet defines ``name``, rebuild the rest.
+
+        Lean REPL has no native retract; we reload the preamble and re-play every
+        committed session command that does not introduce ``name``.
+        """
+        keep: list[str] = []
+        dropped = False
+        # Match theorem/lemma/def/example/structure/class/inductive introducing name.
+        pat = re.compile(
+            rf"\b(?:theorem|lemma|def|abbrev|example|structure|class|inductive|"
+            rf"instance)\s+{re.escape(name)}\b"
+        )
+        for cmd in self._session_cmds:
+            if pat.search(cmd):
+                dropped = True
+                continue
+            keep.append(cmd)
+        if not dropped:
+            raise LeanREPLError(
+                f"retract: no session declaration matching {name!r} "
+                f"({len(self._session_cmds)} committed snippet(s))"
+            )
+        state = self.load_preamble(timeout_s=timeout_s)
+        for cmd in keep:
+            state = self.send_transactional(cmd, timeout_s=timeout_s)
+            if not state.ok:
+                raise LeanREPLError(
+                    f"retract rebuild failed while replaying snippet: {state.errors}"
+                )
+        return state
 
     def load_preamble(
         self,
@@ -219,12 +352,15 @@ class LeanREPL:
         check_axioms --run-lean, plus Mathlib and the usual opens.
         """
         src = DEFAULT_SCRATCH_PREAMBLE if preamble is None else preamble
+        if self._uses_lake_repl():
+            ensure_library_oleans(self.project_dir)
         state = self.send(src, new_env=True, timeout_s=timeout_s)
         if state.errors:
             raise LeanREPLError(
                 "scratch preamble failed to load:\n" + "\n".join(state.errors)
             )
         self._preamble_loaded = True
+        self._session_cmds = []
         return state
 
     def ensure_preamble(
@@ -295,6 +431,7 @@ class LeanREPL:
                     f"no complete reply within {self.timeout_s:g}s; process killed"
                 )
             if line is None:  # stdout closed => process exited
+                self._kill()
                 raise LeanREPLError(f"REPL stdout closed unexpectedly\n{self._stderr()}")
             if not line.strip() and not lines:
                 continue  # skip leading blank lines before a frame
@@ -325,8 +462,14 @@ class LeanREPL:
             if len(self._err_lines) > _MAX_ERR_LINES:
                 del self._err_lines[0]
 
+    def _uses_lake_repl(self) -> bool:
+        cmd = self.repl_cmd
+        return len(cmd) >= 2 and cmd[0] == "lake" and cmd[1] == "exe"
+
     def _ensure_running(self) -> None:
-        if self._proc is None or self._proc.poll() is not None:
+        if self._proc is not None and self._proc.poll() is not None:
+            self._kill()
+        if self._proc is None:
             raise LeanREPLError("REPL is not running; call start() (or restart()) first")
 
     def _stderr(self) -> str:
@@ -344,6 +487,7 @@ class LeanREPL:
                 pass
         self._env = None
         self._preamble_loaded = False
+        self._session_cmds = []
 
 
 __all__ = [
@@ -352,4 +496,6 @@ __all__ = [
     "LeanREPL",
     "LeanREPLError",
     "LeanREPLTimeout",
+    "ensure_library_oleans",
+    "library_oleans_stale",
 ]

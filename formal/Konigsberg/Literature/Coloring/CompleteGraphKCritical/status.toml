@@ -1,0 +1,10 @@
+[entry]
+name = "CompleteGraphKCritical"
+citation = "Folklore: K_k is k-critical in the hereditary/subgraph sense (every proper Subgraph H ≠ ⊤ is (k−1)-colorable), not merely vertex-critical. Non-vacuity witness for the BK reducibility/discharging bridges."
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.CompleteGraphKCritical.completeGraph_kCritical"
+status = "formalized"
+axioms = ["propext", "Classical.choice", "Quot.sound"]
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

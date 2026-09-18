@@ -16,3 +16,15 @@ class ToolUnavailable(Exception):
 
     def banner(self) -> str:
         return str(self)
+
+
+class ToolBudgetExceeded(Exception):
+    """A tool refused to run because inputs exceed safe computational bounds."""
+
+    def __init__(self, tool: str, reason: str) -> None:
+        self.tool = tool
+        self.reason = reason
+        super().__init__(f"TOOL BUDGET EXCEEDED: {tool} — {reason}")
+
+    def banner(self) -> str:
+        return str(self)

@@ -1,0 +1,9 @@
+[entry]
+name = "Rabern_HittingMaxCliques"
+citation = "L. Rabern, On hitting all maximum cliques with an independent set, J. Graph Theory 66 (2011) 32–37; arXiv:0907.3705"
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.Rabern_HittingMaxCliques.hitting_max_cliques"
+status = "stated"
+verified_at = "cdf5bdd0de058025fdf97d6f5395883ce8466d10"

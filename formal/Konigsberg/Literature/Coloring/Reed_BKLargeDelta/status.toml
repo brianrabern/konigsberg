@@ -1,0 +1,9 @@
+[entry]
+name = "Reed_BKLargeDelta"
+citation = "B. Reed, A strengthening of Brooks' theorem, J. Combin. Theory Ser. B 76 (1999) 136–149 (BK for large Δ). Explicit/constructive constant: arXiv:2603.16670 (Δ ≥ 5.2·10⁹)."
+area = "coloring"
+
+[[claims]]
+lean_name = "Konigsberg.Literature.Coloring.Reed_BKLargeDelta.reed_bk_large_delta"
+status = "stated"
+verified_at = "pending"

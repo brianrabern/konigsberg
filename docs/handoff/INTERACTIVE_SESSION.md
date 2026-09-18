@@ -110,8 +110,9 @@ CC's compaction, adapted so it can never touch trust state.
 - CLI flags on the entry point: `--task "<t>"` (headless one-shot, prints ledger,
   exits — preserves current `agent_demo` behavior), `--resume <id>`, `--continue`,
   `--model`/tier overrides already handled by `models.py`.
-- Real `AnthropicModel` when `ANTHROPIC_API_KEY` is set; scripted fake otherwise
-  (so the REPL is demoable and testable offline).
+- Real live model when `OPENAI_BASE_URL` / `KONIGSBERG_PROVIDER=local` (llama.cpp)
+  or `ANTHROPIC_API_KEY` is set; scripted fake otherwise (so the REPL is
+  demoable and testable offline). See `docs/handoff/LOCAL_LLM.md`.
 
 ## WP6 — Tests
 

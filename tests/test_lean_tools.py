@@ -24,9 +24,12 @@ class StubREPL:
     def ensure_preamble(self, preamble=None, *, timeout_s=None) -> None:
         return None
 
-    def send(self, snippet, *, timeout_s=None, new_env=False) -> GoalState:
+    def send(self, snippet, *, timeout_s=None, new_env=False, commit=True) -> GoalState:
         self.last = snippet
         return self._gs
+
+    def send_transactional(self, snippet, *, timeout_s=None) -> GoalState:
+        return self.send(snippet, timeout_s=timeout_s, commit=True)
 
 
 # --- _parse_suggestions ---------------------------------------------------

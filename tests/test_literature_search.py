@@ -31,6 +31,11 @@ def test_library_map_parses_status_and_external():
         "EulerianOrientationsLemma",
         "HajnalLemma",
         "BrooksListForm",
+        "BorodinKostochka",
+        "CranstonRabern_BKEquivalentConjectures",
+        "CranstonRabern_BrooksAndBeyond",
+        "CranstonRabern_ChiEqDeltaBigCliques",
+        "Rabern_HittingMaxCliques",
     ):
         assert n in names
     # on-disk status.toml count + one EXTERNAL entry
@@ -63,6 +68,10 @@ def test_literature_search_rabern_statuses():
     assert by_name["CranstonRabern_ImprovedEdgeBound"] == {"stated"}
     assert "KiersteadRabern_OreVizing" in by_name
     assert by_name["KiersteadRabern_OreVizing"] == {"stated"}
+    assert "CranstonRabern_BKEquivalentConjectures" in by_name
+    assert "stated" in by_name["CranstonRabern_BKEquivalentConjectures"]
+    assert "Rabern_HittingMaxCliques" in by_name
+    assert "stated" in by_name["Rabern_HittingMaxCliques"]
     assert "BrooksLean" in by_name
     assert by_name["BrooksLean"] == {"external-verified"}
 
@@ -88,22 +97,51 @@ def test_stated_status_carried_verbatim_never_upgraded():
 
 def test_statements_first_ingest_discoverable():
     """Acceptance: kernel / Nullstellensatz / Hajnal / Brooks surface as stated."""
+    mixed_ok = {
+        "BrooksListForm",  # also BrooksLean external
+        "Rabern_HittingMaxCliques",  # also REFERENCES.toml literature pin
+        "CranstonRabern_BrooksAndBeyond",  # also REFERENCES.toml survey pin
+        "BorodinKostochka",  # also REFERENCES.toml conjecture pin
+        "CranstonRabern_ClawFreeBK",  # also REFERENCES.toml literature pin
+        "CranstonLafayetteRabern_P5GemFreeBK",
+    }
     for query, expected in [
         ("kernel", "KernelPerfectListBound"),
         ("Nullstellensatz", "CombinatorialNullstellensatz"),
         ("Hajnal", "HajnalLemma"),
         ("Brooks", "BrooksListForm"),
+        ("equivalent_K3_join_E6", "CranstonRabern_BKEquivalentConjectures"),
+        ("chi_ge_delta_implies_omega", "CranstonRabern_ChiEqDeltaBigCliques"),
+        ("list_brooks_max3", "CranstonRabern_BrooksAndBeyond"),
+        ("hitting_max_cliques", "Rabern_HittingMaxCliques"),
+        ("borodinKostochka", "BorodinKostochka"),
+        ("clawFree_BK", "CranstonRabern_ClawFreeBK"),
+        ("p5GemFree_BK", "CranstonLafayetteRabern_P5GemFreeBK"),
+        ("borodinKostochka_at_nine", "BK_DischargingClosure"),
     ]:
         hits = literature_search(query, root=LIT)
         names = {h["name"] for h in hits}
         assert expected in names, (query, names)
-        stated = [h for h in hits if h["name"] == expected]
-        assert stated
-        # BrooksListForm is stated; BrooksLean is external — don't require only stated
-        if expected != "BrooksListForm":
-            assert all(h["status"] == "stated" for h in stated)
-        else:
-            assert any(h["status"] == "stated" for h in stated)
+        named = [h for h in hits if h["name"] == expected]
+        assert named
+        assert any(h["status"] == "stated" for h in named)
+        if expected not in mixed_ok:
+            assert all(h["status"] == "stated" for h in named)
+
+
+def test_bk_rabern_references_cited_not_verified():
+    for name in (
+        "Rabern_Dissertation",
+        "CranstonRabern_ListClawFreeBK",
+        "Rabern_DoublyCriticalEdgeBK",
+    ):
+        hits = literature_search(name, root=LIT)
+        named = [h for h in hits if h["name"] == name]
+        assert named, name
+        assert all(h["status"] == "literature" for h in named)
+    claw = literature_search("CranstonRabern_ClawFreeBK", root=LIT)
+    assert any(h["status"] == "literature" for h in claw)
+    assert any(h["status"] == "stated" for h in claw)
 
 
 def test_basic_irreducible_formalized_in_corpus():

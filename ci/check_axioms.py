@@ -24,10 +24,12 @@ Two modes:
               konigsberg_harness importable.
 
               For each status.toml, a FRESH REPL environment is created and the
-              entry's own Lean modules are imported before querying — `#print
-              axioms X` fails unless X is loaded, and the root `Konigsberg`
-              import does NOT pull in Literature entries. The per-entry fresh env
-              also stops one entry's imports from masking another's missing ones.
+              entry's Proofs (or Statements) module is imported before querying
+              — `#print axioms X` fails unless X is loaded, and the root
+              `Konigsberg` import does NOT pull in Literature entries. SanityChecks
+              are skipped: `decide` on those files has been observed to kill the
+              REPL mid-corpus. A dead REPL is recreated before the next entry
+              so one crash cannot poison the rest of the gate.
 
 Usage:  python ci/check_axioms.py [ROOT=formal] [--run-lean] [--timeout=SECONDS]
 Exit:   0 pass, 1 violation, 2 usage/parse error.
@@ -50,18 +52,36 @@ def validate(axioms: list[str], justified: set[str]) -> list[str]:
     return [a for a in axioms if a not in allowed]
 
 
+_PREFERRED_LEAN = ("Proofs.lean", "Statements.lean")
+
+
 def modules_for_status(status_path: Path, root_path: Path) -> list[str]:
     """Lean module names to import so this entry's declarations are in scope.
 
-    Maps each sibling `*.lean` (Lake convention: `Konigsberg/Foo/Bar.lean` ->
-    module `Konigsberg.Foo.Bar`). Falls back to the library root `Konigsberg`
-    when the entry keeps no local `.lean` file next to its status.toml.
+    Prefers ``Proofs.lean`` (which imports Statements) over a glob of every
+    sibling ``*.lean``. ``SanityChecks.lean`` is skipped: those files can
+    ``decide`` large graphs and have been observed to close the REPL stdout
+    mid ``--run-lean``. Falls back to the library root ``Konigsberg`` when
+    the entry keeps no local ``.lean`` file next to its status.toml.
     """
+    parent = status_path.parent
+    chosen: list[Path] = []
+    for name in _PREFERRED_LEAN:
+        p = parent / name
+        if p.is_file():
+            chosen.append(p)
+            break
+    if not chosen:
+        chosen = sorted(
+            p for p in parent.glob("*.lean") if p.name != "SanityChecks.lean"
+        )
+    if not chosen:
+        return ["Konigsberg"]
     modules: list[str] = []
-    for lean_file in sorted(status_path.parent.glob("*.lean")):
+    for lean_file in chosen:
         rel = lean_file.relative_to(root_path).with_suffix("")
         modules.append(".".join(rel.parts))
-    return modules or ["Konigsberg"]
+    return modules
 
 
 class _LeanAxiomProbe:
@@ -72,16 +92,40 @@ class _LeanAxiomProbe:
     """
 
     def __init__(self, root: Path, timeout_s: float, repl: object | None = None) -> None:
+        self._root = root
+        self._timeout = timeout_s
         if repl is None:
             from konigsberg_harness.lean_repl import LeanREPL  # deferred on purpose
 
             repl = LeanREPL(project_dir=str(root), timeout_s=timeout_s)
         self._repl = repl
-        self._timeout = timeout_s
+
+    def _recreate(self) -> None:
+        """Drop a dead REPL so the next entry gets a live process."""
+        closer = getattr(self._repl, "close", None)
+        if closer is not None:
+            try:
+                closer()
+            except Exception:  # noqa: BLE001 — dead process; we are replacing it
+                pass
+        from konigsberg_harness.lean_repl import LeanREPL
+
+        self._repl = LeanREPL(project_dir=str(self._root), timeout_s=self._timeout)
+
+    def recover(self) -> None:
+        """Best-effort new process after a failed load / #print axioms."""
+        try:
+            self._recreate()
+        except Exception:  # noqa: BLE001 — next load() will surface a fresh error
+            pass
 
     def load(self, modules: list[str]) -> None:
         """Start a FRESH env with `modules` imported. Raises on import error."""
-        self._repl.restart()
+        try:
+            self._repl.restart()
+        except Exception:
+            self._recreate()
+            self._repl.restart()
         src = "\n".join(f"import {m}" for m in modules)
         state = self._repl.send(src, timeout_s=self._timeout, new_env=True)
         if state.errors:
@@ -91,7 +135,9 @@ class _LeanAxiomProbe:
         return self._repl.print_axioms(lean_name, timeout_s=self._timeout)
 
     def close(self) -> None:
-        self._repl.close()
+        closer = getattr(self._repl, "close", None)
+        if closer is not None:
+            closer()
 
 
 def _parse_timeout(argv: list[str]) -> float:
@@ -141,6 +187,7 @@ def main(argv: list[str]) -> int:
                         f"::error file={status_path}::could not import {modules}: {e}"
                     )
                     violations += len(formalized)
+                    probe.recover()
                     continue
 
             for claim in formalized:
@@ -154,6 +201,7 @@ def main(argv: list[str]) -> int:
                     except Exception as e:  # noqa: BLE001 — unknown ident, timeout, dead REPL
                         print(f"::error file={status_path}::#print axioms {name}: {e}")
                         violations += 1
+                        probe.recover()
                         continue
                     if sorted(live) != sorted(recorded):
                         print(

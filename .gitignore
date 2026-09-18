@@ -19,6 +19,7 @@ dist/
 # Env / secrets — never commit provider keys
 .env
 .env.*
+!.env.example
 
 # OS / editor
 .DS_Store
