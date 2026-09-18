@@ -121,15 +121,26 @@ class _LeanAxiomProbe:
 
     def load(self, modules: list[str]) -> None:
         """Start a FRESH env with `modules` imported. Raises on import error."""
-        try:
-            self._repl.restart()
-        except Exception:  # noqa: BLE001 — recreate a dead process, then retry
-            self._recreate()
-            self._repl.restart()
-        src = "\n".join(f"import {m}" for m in modules)
-        state = self._repl.send(src, timeout_s=self._timeout, new_env=True)
-        if state.errors:
-            raise RuntimeError("; ".join(state.errors))
+        last: BaseException | None = None
+        for _attempt in range(2):
+            try:
+                try:
+                    self._repl.restart()
+                except Exception:  # noqa: BLE001 — recreate a dead process, then retry
+                    self._recreate()
+                    self._repl.restart()
+                src = "\n".join(f"import {m}" for m in modules)
+                state = self._repl.send(src, timeout_s=self._timeout, new_env=True)
+                if state.errors:
+                    raise RuntimeError("; ".join(state.errors))
+                return
+            except Exception as e:
+                last = e
+                if "stdout closed" not in str(e) and "not running" not in str(e):
+                    raise
+                self.recover()
+        assert last is not None
+        raise last
 
     def axioms(self, lean_name: str) -> list[str]:
         return self._repl.print_axioms(lean_name, timeout_s=self._timeout)

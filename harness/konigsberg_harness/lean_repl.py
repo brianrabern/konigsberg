@@ -193,6 +193,7 @@ class LeanREPL:
         self._proc: subprocess.Popen[str] | None = None
         self._out_q: queue.Queue[str | None] = queue.Queue()
         self._err_lines: list[str] = []
+        self._pump_threads: list[threading.Thread] = []
         self._env: int | None = None  # id of the current live environment
         self._preamble_loaded: bool = False
         # Snippets successfully committed after the preamble (for retract rebuild).
@@ -217,8 +218,22 @@ class LeanREPL:
         self._env = None
         self._preamble_loaded = False
         self._session_cmds = []
-        threading.Thread(target=self._pump_stdout, daemon=True).start()
-        threading.Thread(target=self._pump_stderr, daemon=True).start()
+        # Bind the queue/lists into the pump threads. If they closed over
+        # ``self._out_q``, a restart would let the dying process's EOF land on
+        # the *new* queue and the next import would look like "stdout closed".
+        out_q = self._out_q
+        err_lines = self._err_lines
+        proc = self._proc
+        self._pump_threads = [
+            threading.Thread(
+                target=self._pump_stdout, args=(proc, out_q), daemon=True
+            ),
+            threading.Thread(
+                target=self._pump_stderr, args=(proc, err_lines), daemon=True
+            ),
+        ]
+        for t in self._pump_threads:
+            t.start()
 
     def restart(self) -> None:
         self.close()
@@ -445,22 +460,27 @@ class LeanREPL:
                 raise LeanREPLError(f"REPL reply was not a JSON object: {buf!r}")
             return obj
 
-    def _pump_stdout(self, proc: subprocess.Popen | None = None) -> None:
-        stream = (proc or self._proc).stdout  # type: ignore[union-attr]
+    def _pump_stdout(
+        self, proc: subprocess.Popen[str], out_q: queue.Queue[str | None]
+    ) -> None:
+        stream = proc.stdout
         try:
-            for line in stream:  # type: ignore[union-attr]
-                self._out_q.put(line)
+            if stream is not None:
+                for line in stream:
+                    out_q.put(line)
         finally:
-            self._out_q.put(None)  # EOF sentinel
+            out_q.put(None)
 
-    def _pump_stderr(self) -> None:
-        stream = self._proc.stderr if self._proc else None
+    def _pump_stderr(
+        self, proc: subprocess.Popen[str], err_lines: list[str]
+    ) -> None:
+        stream = proc.stderr
         if stream is None:
             return
         for line in stream:
-            self._err_lines.append(line)
-            if len(self._err_lines) > _MAX_ERR_LINES:
-                del self._err_lines[0]
+            err_lines.append(line)
+            if len(err_lines) > _MAX_ERR_LINES:
+                del err_lines[0]
 
     def _uses_lake_repl(self) -> bool:
         cmd = self.repl_cmd
@@ -477,14 +497,21 @@ class LeanREPL:
 
     def _kill(self) -> None:
         proc, self._proc = self._proc, None
-        if proc is None:
-            return
-        if proc.poll() is None:
-            proc.kill()
-            try:
-                proc.wait(timeout=5)
-            except subprocess.TimeoutExpired:
-                pass
+        threads, self._pump_threads = self._pump_threads, []
+        if proc is not None:
+            if proc.stdin is not None:
+                try:
+                    proc.stdin.close()
+                except OSError:
+                    pass
+            if proc.poll() is None:
+                proc.kill()
+                try:
+                    proc.wait(timeout=5)
+                except subprocess.TimeoutExpired:
+                    pass
+        for t in threads:
+            t.join(timeout=2)
         self._env = None
         self._preamble_loaded = False
         self._session_cmds = []

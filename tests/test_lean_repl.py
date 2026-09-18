@@ -163,7 +163,17 @@ def test_timeout_kills_the_process():
     assert repl._proc is None  # killed, env forfeit
 
 
-def test_send_before_start_raises():
+def test_restart_does_not_see_stale_eof():
+    """Old pump EOF must not land on the queue of the next process."""
+    repl = LeanREPL(repl_cmd=[sys.executable, "-c", FAKE_REPL], timeout_s=5)
+    try:
+        repl.start()
+        for i in range(12):
+            repl.restart()
+            gs = repl.send(f"cmd {i}")
+            assert gs.ok, i
+    finally:
+        repl.close()
     with pytest.raises(LeanREPLError):
         LeanREPL(repl_cmd=[sys.executable, "-c", FAKE_REPL]).send("x")
 
