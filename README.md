@@ -17,6 +17,23 @@ first as the exemplar area and as the template other areas copy. The north star
 is materially accelerating a human attack on Borodin–Kostochka; the deliverable
 at every milestone is an instrument useful on its own terms.
 
+## Run on a local LLM (llama.cpp + ROCm + Qwen)
+
+Step-by-step: **[`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md)**.
+
+```bash
+git clone <this-repo-url> konigsberg && cd konigsberg
+make setup                 # python, nauty, mathlib cache, lake build
+make lean-smoke
+cp .env.example .env       # KONIGSBERG_PROVIDER=local → llama-server :8080
+# llama-server already up (HIP build, --jinja, ctx 32k, Qwen Instruct GGUF)
+uv run konig --forever --max-rounds 20
+uv run konig --forever
+```
+
+Prereqs: [`uv`](https://docs.astral.sh/uv/), [`elan`](https://github.com/leanprover/elan),
+a **ROCm** llama.cpp (`GGML_HIP=ON`), a Qwen Instruct/Coder GGUF. No Anthropic key.
+
 ## Layout
 
 | Path | Tier | Owner |
@@ -25,7 +42,7 @@ at every milestone is an instrument useful on its own terms.
 | `empirical/` | Empirical (Python): enumeration, SAT, choosability solvers | core + community |
 | `harness/` | Agent (Python): loop, tools, ledger, context surfacing | core |
 | `ci/` | Trust gates: axioms, sorry, imports, conventions, audit self-test | core |
-| `vendor/` | Landon Rabern's .NET oracle — TEST ORACLE ONLY, to be deleted | — |
+| `vendor/` | Landon Rabern's .NET oracle — **test oracle only**; skip for the hunt | — |
 | `templates/` | Copyable skeletons for new areas / literature entries | — |
 
 Lean and Python never import each other. The harness is the only thing that
@@ -69,71 +86,24 @@ say what the docstring claims.
 | `stated` | — | Statement typechecks. Says nothing about truth |
 | `conjectured` | model | Unverified LLM output |
 
-## Run the Borodin–Kostochka hunt on a local LLM
+## Quickstart (also Claude)
 
-Clone-to-campaign walkthrough (llama.cpp / Qwen, no cloud key), including
-Lean/mathlib setup, `.env`, a 20-round smoke, and an unattended `--forever`
-soak: **[`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md)**.
-
-## Quickstart
-
-Prereqs: [`elan`](https://github.com/leanprover/elan) (Lean toolchain manager),
-Python ≥ 3.11, and [`uv`](https://docs.astral.sh/uv/). On macOS, [`Homebrew`](https://brew.sh)
-is used to install nauty when missing.
+Python ≥ 3.11. On macOS, Homebrew installs nauty when missing.
 
 ```bash
-# Formal tier — M0: get mathlib, verify the environment round-trips
-cd formal
-lake update                 # freezes the real mathlib commit into lake-manifest.json — COMMIT IT
-lake exe cache get          # prebuilt oleans; do NOT build mathlib from source
-lake build
-
-# Python + system deps (uv sync + nauty/geng via brew/apt when missing)
-cd ..
-make deps                   # or: uv run python scripts/ensure_deps.py --yes
-
-# Interactive session (Claude-Code-shaped REPL; ledger persists under ~/.konigsberg/sessions/)
-uv run konig                         # short alias
-uv run konigsberg                    # same
-uv run konig --task "…"              # headless one-shot
-uv run konig --until-proved --task "Prove …"   # autonomous hunt until lean_prove
-uv run konig --forever                         # BK campaign: until proved/disproved
-uv run konig --continue              # resume latest session
-# Live model: Anthropic (ANTHROPIC_API_KEY) or local llama.cpp
-# (KONIGSBERG_PROVIDER=local + OPENAI_BASE_URL). Repo-root `.env` is auto-loaded;
-# scripted fake otherwise. Chat model: ANTHROPIC_MODEL=opus 4.8, or
-# KONIGSBERG_MODEL=<gguf-name> locally (or /model in-session).
-# Local BK hunt (clone → llama-server → --forever): docs/LOCAL_BK_HUNT.md
-# Hunt + locked lemmas: see docs/handoff/HUNT_AND_LEMMAS.md.
-
-# Trust gates (run what CI runs)
-make gates
-# equivalent:
-#   uv run python ci/self_test_audit.py
-#   uv run python ci/referee_self_test.py
-#   uv run python ci/reduction_self_test.py
-#   uv run python ci/discharging_self_test.py
-#   uv run python ci/check_status.py formal
-#   uv run python ci/check_no_sorry.py formal
-#   uv run python ci/check_axioms.py formal
-#   uv run python ci/check_imports.py formal
-#   uv run python ci/check_conventions.py formal
+make setup                   # or: make deps && make lean-setup
+uv run konig                 # interactive REPL; ledger under ~/.konigsberg/sessions/
+uv run konig --forever       # BK campaign (needs a live model)
+uv run konig --continue      # resume latest session
+# Live model: repo-root `.env` (see .env.example). Local llama.cpp:
+#   KONIGSBERG_PROVIDER=local + OPENAI_BASE_URL. Or ANTHROPIC_API_KEY.
+make gates                   # same trust gates CI runs
 ```
 
 ## Status
 
-Working three-tier instrument (Lean library + empirical solvers + ledger-backed
-harness). `--forever` is the Borodin–Kostochka campaign: it runs until a durable
-kernel `lean_prove` of `borodinKostochka` lands, a certified Δ ≥ 9 counterexample
-lands, or you stop it. Model prose never counts. See
-[`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md) to clone and hunt on a local
-LLM. `PLAN.md` tracks remaining milestones; “Scaffold” is no longer the state
-of the tree.
-
-**What to read:** hunt = `docs/LOCAL_BK_HUNT.md`; trust = `docs/TRUST.md`.
-`docs/handoff/` is a lab notebook — ignore it unless you are debugging a
-specific ingest. `vendor/` is a **test oracle** for differential tests; do
-not build it to run the hunt (those tests skip if the oracle is missing).
+Working three-tier instrument. Hunt setup: [`docs/LOCAL_BK_HUNT.md`](docs/LOCAL_BK_HUNT.md).
+Trust: [`docs/TRUST.md`](docs/TRUST.md). `docs/handoff/` is a lab notebook.
 
 ## License
 

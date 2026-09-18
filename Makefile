@@ -1,10 +1,12 @@
-.PHONY: gates test lint sync deps lean-setup lean-smoke axioms-lean campaign
+.PHONY: gates test lint sync deps setup lean-setup lean-smoke axioms-lean campaign
 
 sync:        ## install python packages (editable)
 	uv sync
 
 deps:        ## python (uv sync) + system nauty/geng when missing
 	uv run python scripts/ensure_deps.py --yes
+
+setup: deps lean-setup  ## clone-to-ready: python + nauty + mathlib cache + lake build
 
 gates: sync  ## run the trust gates (no Lean build needed)
 	uv run python ci/self_test_audit.py
@@ -23,8 +25,8 @@ test: sync   ## run python tests
 lint: sync   ## ruff
 	uv run ruff check .
 
-lean-setup:  ## M0: fetch mathlib + prebuilt oleans + repl, then build
-	cd formal && lake update && lake exe cache get && lake build
+lean-setup:  ## mathlib oleans from cache + lake build (uses committed lake-manifest)
+	cd formal && lake exe cache get && lake build
 
 lean-smoke: sync  ## M0: verify the Lean env round-trips through the REPL
 	uv run python scripts/smoke_lean.py
