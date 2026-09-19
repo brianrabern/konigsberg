@@ -42,14 +42,13 @@ REDISCOVERY_BANNER = (
 STAGNATION_THRESHOLD = 2
 REFORMULATE_BANNER = (
     "REFORMULATE: the ledger has not moved on this stair. Rabern's meta-move "
-    "is to trade the standing target for an a-priori-weaker equivalent — that "
-    "is where choosability bites. literature_search "
+    "is to trade the standing target for an a-priori-weaker equivalent "
+    "statement — prove it in Lean, or close discharging. literature_search "
     "CranstonRabern_BKEquivalentConjectures; pin equivalent_K3_join_E6 "
-    "(χ=Δ=9 ⇒ contains K₃∗Ē₆ as a subgraph) and "
-    "fChoosable_join_not_induced_in_critical (an f-choosable join A∗B with "
-    "f(v)=d(v)−1 cannot be induced in a D-critical graph with Δ=D). One "
-    "increment on the reformulated target (join core, or kernel work on the "
-    "equivalence). Do not retest listed cores and do not drop the stair. "
+    "(χ=Δ=9 ⇒ contains K₃∗Ē₆ as a subgraph) as a *statement*, not a graph "
+    "to SAT. Do not rebuild H??F~~~ / choosability_refute the gadget — it "
+    "is already on 𝒞. Work μ+rules or a durable kernel lemma (no sorry/admit). "
+    "Do not retest listed cores and do not drop the stair. "
     "Settlement is still durable borodinKostochka.\n"
 )
 

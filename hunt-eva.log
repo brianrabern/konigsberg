@@ -1,0 +1,31 @@
+repl: live LeanREPL
+BK campaign — looping until the conjecture is proved or disproved (Ctrl-C also 
+stops); lemmas lock and the hunt continues
+  ⎿  campaign_status {}
+  ⎿  literature_search {"query":"Rabern Borodin Kostochka reducible 
+configurations f-choosable"}
+  ⎿  lemma_list {}
+  ⎿  STAIRCASE (ledger, not prose):   locked lemmas: 0 (0 durable) — (none)   C:
+0 cores — (none)   bridge: BK.reducible_of_…
+  ⎿  results: {'name': 'BK_DischargingClosure', 'citation': 'Konigsberg 
+discharging closure (reducible ∧ unavoidable ⇒ no D-…
+  ⎿  (no locked lemmas)
+  ⎿  make_graph {"kind":"path","n":3}
+  ⎿  [python-checked] [n=3] make_graph(path) → graph6=BW (n=3, m=2)
+  ★  [python-checked] [n=3] make_graph(path) → graph6=BW (n=3, m=2)
+  ⎿  reducible_configuration {"core":"BW","degrees":[8,8,8],"D":9}
+  ⎿  inconclusive: bad f-list found (method inconclusive; proves nothing); 
+witness bad f-list [[0], [1], [0, 1]] (proves not…
+  ⎿  campaign_status {}
+  ⎿  STAIRCASE (ledger, not prose):   locked lemmas: 0 (0 durable) — (none)   C:
+0 cores — (none)   bridge: BK.reducible_of_…
+  ⎿  literature_search {"query":"Rabern seed configurations forbidden low 
+vertices P3 catalogue"}
+  ⎿  literature_search {"query":"CR_low_P3 seed reducible core degrees"}
+  ⎿  literature_search {"query":"reducible configuration catalogue six seeds 
+D-critical"}
+  ⎿  results: (none)
+  ⎿  results: {'name': 'BK_ReducibleOfFChoosable', 'citation': 'Konigsberg 
+reducibility bridge (BK minimal counterexample / …
+  ⎿  results: {'name': 'BK_DischargingClosure', 'citation': 'Konigsberg 
+discharging closure (reducible ∧ unavoidable ⇒ no D-…

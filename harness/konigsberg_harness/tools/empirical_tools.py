@@ -7,6 +7,9 @@ Note the deliberate split (see ledger.TrustRoot):
 """
 from __future__ import annotations
 
+import os
+import signal
+from contextlib import contextmanager
 from dataclasses import dataclass
 
 from konigsberg_empirical import discharging as _dis
@@ -19,6 +22,71 @@ from konigsberg_empirical.search.enumerate import parse_graph6
 from konigsberg_empirical.sufficient_only import assert_sufficient_only
 
 from ..ledger import Claim, mint_certificate, mint_enumeration, mint_solver_result
+
+# Live-hunt caps: f-choosability is Π₂-hard; n=9 (H??F~~~) hung the forever loop.
+# Set KONIGSBERG_CHOOSABILITY_MAX_N=0 or TIMEOUT=0 to disable.
+_DEFAULT_CHOOSABILITY_MAX_N = 6
+_DEFAULT_CHOOSABILITY_TIMEOUT_S = 45.0
+
+
+def _env_number(name: str, default: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or not str(raw).strip():
+        return default
+    return float(raw)
+
+
+def choosability_max_n() -> int:
+    return int(_env_number("KONIGSBERG_CHOOSABILITY_MAX_N", _DEFAULT_CHOOSABILITY_MAX_N))
+
+
+def choosability_timeout_s() -> float:
+    return _env_number("KONIGSBERG_CHOOSABILITY_TIMEOUT", _DEFAULT_CHOOSABILITY_TIMEOUT_S)
+
+
+def _guard_choosability_n(tool: str, n: int) -> None:
+    from .errors import ToolBudgetExceeded
+
+    cap = choosability_max_n()
+    if cap > 0 and n > cap:
+        raise ToolBudgetExceeded(
+            tool,
+            f"n={n} exceeds live cap {cap} (Π₂-hard SAT). "
+            "Do not SAT-search listed cores / H??F~~~ / K₃∨Ē₆ — they are already "
+            f"on 𝒞. Opt in with KONIGSBERG_CHOOSABILITY_MAX_N=0 (or a higher cap).",
+        )
+
+
+@contextmanager
+def choosability_deadline(tool: str):
+    """Wall-clock cap around a Π₂ choosability search (SIGALRM)."""
+    from .errors import ToolBudgetExceeded
+
+    timeout = choosability_timeout_s()
+    if timeout <= 0 or not hasattr(signal, "SIGALRM") or not hasattr(signal, "setitimer"):
+        yield
+        return
+
+    class _Deadline(Exception):
+        pass
+
+    def _handler(_signum, _frame):
+        raise _Deadline()
+
+    prev = signal.getsignal(signal.SIGALRM)
+    signal.signal(signal.SIGALRM, _handler)
+    signal.setitimer(signal.ITIMER_REAL, timeout)
+    try:
+        yield
+    except _Deadline as exc:
+        raise ToolBudgetExceeded(
+            tool,
+            f"timed out after {timeout:g}s (Π₂ search). Do not retry the same "
+            f"graph; take discharging or a new n≤{choosability_max_n()} core.",
+        ) from exc
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0.0)
+        signal.signal(signal.SIGALRM, prev)
 
 
 def counterexample_search(predicate, bound: int) -> Claim | None:
@@ -46,7 +114,9 @@ def choosability_refute(graph6: str, k: int = 3, palette: int | None = None) -> 
     if not _ch.is_available():
         raise ToolUnavailable("choosability_refute", "pysat not installed")
     graph = parse_graph6(graph6)
-    bad = _ch.find_bad_list(graph, k, palette=palette)
+    _guard_choosability_n("choosability_refute", graph.n)
+    with choosability_deadline("choosability_refute"):
+        bad = _ch.find_bad_list(graph, k, palette=palette)
     if bad is not None:
         if not _ch.verify_bad_list(graph, bad, k):  # defensive; must not happen
             raise ValueError("CEGAR returned a non-certificate")
@@ -141,10 +211,12 @@ def reducible_configuration(
         raise ToolUnavailable("reducible_configuration", "pysat not installed")
 
     graph = parse_graph6(core)
+    _guard_choosability_n("reducible_configuration", graph.n)
     degree_spec = _normalize_degrees(degrees, graph.n)
     try:
         config = _red.build_configuration(graph, degree_spec, D)
-        result = _red.reducible(config)
+        with choosability_deadline("reducible_configuration"):
+            result = _red.reducible(config)
     except _red.ToolBudgetExceeded as e:
         raise ToolBudgetExceeded("reducible_configuration", str(e)) from e
 

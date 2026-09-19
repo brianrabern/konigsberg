@@ -14,6 +14,9 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
+# Kernel holes — a snippet that elaborates with these is not a proof.
+HOLE_AXIOMS = frozenset({"sorryAx", "Lean.ofReduceBool"})
+
 
 def _utcnow() -> str:
     return datetime.now(UTC).isoformat()
@@ -49,6 +52,13 @@ class LockedLemma:
     def render(self) -> str:
         tag = "durable" if self.durable else "session"
         return f"{self.lean_name} [{tag}] ({len(self.snippet)} chars)"
+
+
+def lemma_has_hole(lemma: LockedLemma | None) -> bool:
+    """True when the snippet used sorry/admit or native_decide."""
+    if lemma is None:
+        return False
+    return bool(HOLE_AXIOMS.intersection(lemma.axioms))
 
 
 @dataclass

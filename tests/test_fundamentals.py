@@ -83,6 +83,20 @@ def test_c5_and_k33():
     assert inv.is_planar(k33)[0] is False
 
 
+def test_zykov_join_k3_empty6():
+    """K₃ ∨ Ē₆ has 9 vertices and 3 + 3·6 = 21 edges (BK equivalent form)."""
+    k3 = build("complete", n=3)
+    e6 = build("empty", n=6)
+    j = ops.join(k3, e6)
+    assert j.n == 9
+    assert len(j.edges) == 21
+    e2a = build("empty", n=2)
+    e2b = build("empty", n=2)
+    k22 = ops.join(e2a, e2b)  # K_{2,2} ≅ C₄
+    assert k22.n == 4
+    assert len(k22.edges) == 4
+
+
 def test_complement_line_contract_induced():
     k4 = build("complete", n=4)
     empty4 = ops.complement(k4)
@@ -218,3 +232,17 @@ def test_make_graph_args_validated():
     reg = build_registry()
     with pytest.raises(ValidationError):
         reg.dispatch("make_graph", {})  # missing kind
+
+
+def test_make_graph_kind_join_aliases_join_tool():
+    """Eva called make_graph(kind='join'); that is Zykov G ∨ H, not a family."""
+    reg = build_registry()
+    k3 = _g6_from_claim(reg.dispatch("make_graph", {"kind": "complete", "n": 3}))
+    e6 = _g6_from_claim(reg.dispatch("make_graph", {"kind": "empty", "n": 6}))
+    via_op = _g6_from_claim(reg.dispatch("join", {"graph6": k3, "other": e6}))
+    via_kind = _g6_from_claim(
+        reg.dispatch("make_graph", {"kind": "join", "graph6": k3, "other": e6})
+    )
+    assert via_op == via_kind
+    with pytest.raises(ValueError, match="graph6= and other="):
+        reg.dispatch("make_graph", {"kind": "join", "graph6": k3})

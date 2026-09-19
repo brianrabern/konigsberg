@@ -33,3 +33,12 @@ def test_smaller_palette_miss_is_not_a_complete_decision():
     claim = choosability_refute(g6(nx.complete_graph(3)), 3, palette=3)
     assert claim.provenance.evidence_kind.name == "SAMPLED"  # not EXHAUSTIVE
     assert "=> 3-choosable" not in claim.statement
+
+
+def test_live_cap_refuses_n_over_six():
+    from konigsberg_empirical.fundamentals.codec import graph6_encode
+    from konigsberg_harness.tools.errors import ToolBudgetExceeded
+
+    g6s = graph6_encode(7, [])
+    with pytest.raises(ToolBudgetExceeded, match="live cap"):
+        choosability_refute(g6s, 3)

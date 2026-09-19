@@ -31,7 +31,7 @@ from .campaign import (
 from .compaction import CompactionConfig, compact, should_compact
 from .grounding import format_grounded_answer
 from .ledger import Claim, EvidenceKind, Ledger, TrustRoot
-from .lemmas import LockedLemma
+from .lemmas import LockedLemma, lemma_has_hole
 from .models import (
     AssistantText,
     Model,
@@ -41,7 +41,7 @@ from .models import (
     UserMsg,
 )
 from .session import Session, SessionStore
-from .tools.errors import ToolUnavailable
+from .tools.errors import ToolBudgetExceeded, ToolUnavailable
 from .tools.registry import ToolRegistry
 
 
@@ -205,8 +205,9 @@ Staircase (do the first incomplete step; one increment per circuit):
 Call campaign_status after compaction. Do not retest listed cores. Exhaust the
 Rabern catalogue before inventing configurations. Class-restricted BK is reference, not a target.
 If the stair freezes (same |𝒞|, same durable lemmas, same discharging miss),
-REFORMULATE: trade BK for an a-priori-weaker equivalent
-(CranstonRabern_BKEquivalentConjectures) — that is where choosability bites.
+REFORMULATE: trade BK for an a-priori-weaker equivalent *statement*
+(CranstonRabern_BKEquivalentConjectures) — prove it in Lean or close
+discharging. Do not SAT-search K₃∨Ē₆ / H??F~~~ (already on 𝒞).
 """
 
 FOREVER_CONTINUE = (
@@ -216,7 +217,14 @@ FOREVER_CONTINUE = (
     "That kernel Claim of the general statement is a proof of the conjecture. "
     "Build on Rabern (literature_search); do not "
     "rediscover named results. Take the NEXT stair below — not a core already "
-    "listed. Call campaign_status if the stair is missing. Continue."
+    "listed. Call campaign_status if the stair is missing. "
+    "A reducible_configuration MISS is sufficient-only — do not repeat the "
+    "same core+degrees. Listed cores are done — do not reducible_configuration, "
+    "choosability_refute, or re-join them (including H??F~~~ / K₃∨Ē₆). "
+    "A sorry/admit lock is not progress. A lean_prove compile miss is not a "
+    "kernel proof — do not resubmit the same snippet or `import` lines "
+    "(scratch env already has Konigsberg). REFORMULATE means discharging or a "
+    "weaker equivalent *statement*, not a SAT on the join gadget. Continue."
 )
 
 CAMPAIGN_PROVED = (
@@ -510,6 +518,8 @@ def _lock_from_prove(
         durable=bool(claim.provenance.durable),
         axioms=tuple(claim.provenance.axioms),
     )
+    if lemma_has_hole(lemma):
+        return
     if store is not None:
         store.log_lemma(session, lemma)
     else:
@@ -686,7 +696,17 @@ class Agent:
                 compacted = True
             self._maybe_inject_staircase(session, store, force=compacted)
             yield ModelThinking("Thinking…")
-            turn = self.model.respond(session.history, tools, tier=tier)
+            try:
+                turn = self.model.respond(session.history, tools, tier=tier)
+            except (TimeoutError, RuntimeError) as e:
+                # --forever must not die on a silent LLM (Eva does not stream;
+                # urllib timeout is idle-on-socket, not "generation finished").
+                if not self.config.hunt_forever:
+                    raise
+                timed_out = isinstance(e, TimeoutError) or "timed out" in str(e).lower()
+                if not timed_out:
+                    raise
+                turn = AssistantText(f"(LLM request timed out: {e})")
 
             if isinstance(turn, AssistantText):
                 keep_hunting = self.config.hunt and (
@@ -754,7 +774,7 @@ class Agent:
                         m = call.args.get("m")
                         if isinstance(m, int):
                             turn_definitions.append(list_critical_definition(m))
-                except ToolUnavailable as e:
+                except (ToolUnavailable, ToolBudgetExceeded) as e:
                     banner = e.banner()
                     turn_failures.append(e.tool)
                     tr = ToolResultMsg(id=call.id, content=banner, is_error=True)

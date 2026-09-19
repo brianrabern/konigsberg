@@ -63,13 +63,24 @@ def make_graph(
     parts: list[int] | None = None,
     edges: list[list[int]] | None = None,
     graph6: str | None = None,
+    other: str | None = None,
 ) -> Claim:
     """Mint a canonical graph6 from a named family or explicit edges/graph6.
 
     The only approved way to obtain a graph6 handle — never invent one by hand.
     Canonicalization uses nauty labelg when available; otherwise a documented
     near-canonical fallback (exact identity via is_isomorphic).
+    ``kind='join'`` is the Zykov join G ∨ H (same as the join tool): pass
+    graph6= and other=.
     """
+    kind_n = kind.strip().lower().replace("-", "_").replace(" ", "_")
+    if kind_n == "join":
+        if not graph6 or not other:
+            raise ValueError(
+                "kind='join' is Zykov G ∨ H; pass graph6= and other= "
+                "(or call the join tool)"
+            )
+        return join(graph6, other)
     g = build_graph(
         kind,
         n=n,
@@ -927,7 +938,9 @@ def register_fundamentals(reg: Any) -> None:
             (
                 "Mint canonical graph6 from a named family (complete/cycle/path/empty/"
                 "star/wheel/complete_bipartite/complete_multipartite/hypercube/grid/"
-                "petersen/turan) or from_edges / from_graph6. Never invent graph6 by hand."
+                "petersen/turan) or from_edges / from_graph6. Zykov join G ∨ H: "
+                "kind=join with graph6= and other= (same as the join tool). "
+                "Never invent graph6 by hand."
             ),
             MakeGraphArgs,
         ),

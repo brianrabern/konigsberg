@@ -296,8 +296,9 @@ discharging attempt (closed D=9 over which cores / last miss neighborhood), \
 and the NEXT increment. Do that increment; do not retest a listed core \
 (REDISCOVERY is not progress). If that fingerprint freezes, REFORMULATE: \
 trade the standing BK statement for an a-priori-weaker equivalent \
-(CranstonRabern_BKEquivalentConjectures — χ=Δ=9 ⇒ K₃∗Ē₆; f-choosable joins) \
-where choosability bites; do not drop the stair. First incomplete step: \
+(CranstonRabern_BKEquivalentConjectures — χ=Δ=9 ⇒ K₃∗Ē₆) as a *statement* \
+to prove, or close discharging; do not SAT-search the join gadget / H??F~~~ \
+(already on 𝒞) and do not drop the stair. First incomplete step: \
 (1) re-derive Rabern's known forbidden joins/cores (campaign_status names the \
 next un-minted seed) then extend 𝒞, \
 (2) propose μ+rules and run discharging_unavoidable against ledger 𝒞 (D=9); \

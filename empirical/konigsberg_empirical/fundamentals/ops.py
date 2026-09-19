@@ -71,7 +71,14 @@ def union(g: Graph, h: Graph) -> Graph:
 
 
 def join(g: Graph, h: Graph) -> Graph:
-    return from_nx(nx.join(to_nx(g), to_nx(h)))
+    """Zykov join G ∨ H: disjoint union plus every cross edge V(G)—V(H).
+
+    NetworkX has no ``nx.join`` (Eva hit AttributeError on the join tool).
+    """
+    n_g = g.n
+    u = nx.disjoint_union(to_nx(g), to_nx(h))
+    u.add_edges_from((i, n_g + j) for i in range(g.n) for j in range(h.n))
+    return from_nx(u)
 
 
 def cartesian_product(g: Graph, h: Graph) -> Graph:

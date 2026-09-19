@@ -98,7 +98,12 @@ def test_next_step_after_bridge_asks_for_new_core():
     assert "re-derive Rabern seed" in nxt
     empty_cores = next_step([proof], [lemma])
     assert "re-derive Rabern seed" in empty_cores
-    assert "CR_low_P3" in empty_cores
+    from konigsberg_empirical.reduction.seeds import next_unminted_seed
+
+    seed = next_unminted_seed(())
+    assert seed is not None
+    assert seed.name in empty_cores
+    assert seed.core in empty_cores
 
 
 def test_campaign_status_tool_reads_live_ledger():

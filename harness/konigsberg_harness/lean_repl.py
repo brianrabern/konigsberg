@@ -9,9 +9,11 @@ Every call is isolated and TIMED. `decide` on a large SimpleGraph will hang; the
 timeout is a correctness feature, not just hygiene. When a call times out the
 process is KILLED, not left running: a hung elaboration leaves the environment in
 an unknown state, so continuing against it would silently corrupt every later
-result. Callers must `start()` again (or use `restart()`) after a timeout — the
-live env is intentionally forfeit. Trading env state for the guarantee that we
-never report against a corrupted environment is the whole point of the ledger.
+result. A fresh process is started immediately (and again on the next ``send`` if
+that spawn failed); the timed-out call still raises. Session env is
+intentionally forfeit — ``ensure_preamble`` reloads the corpus on the next Lean
+tool. Trading env state for the guarantee that we never report against a
+corrupted environment is the whole point of the ledger.
 
 Protocol
 --------
@@ -128,7 +130,7 @@ class LeanREPLError(RuntimeError):
 
 
 class LeanREPLTimeout(TimeoutError):
-    """A call exceeded its deadline. The process has been killed; env is gone."""
+    """A call exceeded its deadline. Hung process killed; a fresh REPL was started."""
 
 
 @dataclass
@@ -191,6 +193,7 @@ class LeanREPL:
         self.repl_cmd = list(repl_cmd) if repl_cmd is not None else list(DEFAULT_REPL_CMD)
 
         self._proc: subprocess.Popen[str] | None = None
+        self._started: bool = False  # True after start() until close(); enables revive
         self._out_q: queue.Queue[str | None] = queue.Queue()
         self._err_lines: list[str] = []
         self._pump_threads: list[threading.Thread] = []
@@ -234,13 +237,15 @@ class LeanREPL:
         ]
         for t in self._pump_threads:
             t.start()
+        self._started = True
 
     def restart(self) -> None:
-        self.close()
+        self._kill()
         self.start()
 
     def close(self) -> None:
         self._kill()
+        self._started = False
 
     def __enter__(self) -> Self:
         self.start()
@@ -267,8 +272,8 @@ class LeanREPL:
         pointer unchanged (scratch evaluation). Pass ``new_env=True`` to run in a
         fresh environment instead — required for `import` commands, which the REPL
         only accepts when no env is specified.
-        On timeout the process is killed and LeanREPLTimeout is raised — see the
-        module docstring.
+        On timeout the hung process is killed, a fresh REPL is started, and
+        LeanREPLTimeout is raised — see the module docstring.
         """
         if new_env:
             # Fresh env drops prior imports (and the scratch preamble).
@@ -413,8 +418,23 @@ class LeanREPL:
 
     def _request(self, payload: dict, timeout_s: float | None) -> dict:
         self._ensure_running()
+        try:
+            return self._write_and_read(payload, timeout_s)
+        except LeanREPLError as e:
+            msg = str(e)
+            if "stdout closed" not in msg and "stdin write" not in msg:
+                raise
+            # Process died under us (common after a timeout-kill or a one-shot
+            # reply). Revive once; the timed-out *command* is not retried.
+            self._kill_and_restart()
+            self._ensure_running()
+            return self._write_and_read(payload, timeout_s)
+
+    def _write_and_read(self, payload: dict, timeout_s: float | None) -> dict:
         assert self._proc is not None and self._proc.stdin is not None
-        deadline = time.monotonic() + (timeout_s if timeout_s is not None else self.timeout_s)
+        deadline = time.monotonic() + (
+            timeout_s if timeout_s is not None else self.timeout_s
+        )
         try:
             self._proc.stdin.write(json.dumps(payload) + "\n\n")
             self._proc.stdin.flush()
@@ -434,16 +454,18 @@ class LeanREPL:
         while True:
             remaining = deadline - time.monotonic()
             if remaining <= 0:
-                self._kill()
+                self._kill_and_restart()
                 raise LeanREPLTimeout(
-                    f"no complete reply within {self.timeout_s:g}s; process killed"
+                    f"no complete reply within {self.timeout_s:g}s; "
+                    "process killed, REPL restarted (session env forfeited)"
                 )
             try:
                 line = self._out_q.get(timeout=remaining)
             except queue.Empty:
-                self._kill()
+                self._kill_and_restart()
                 raise LeanREPLTimeout(
-                    f"no complete reply within {self.timeout_s:g}s; process killed"
+                    f"no complete reply within {self.timeout_s:g}s; "
+                    "process killed, REPL restarted (session env forfeited)"
                 )
             if line is None:  # stdout closed => process exited
                 self._kill()
@@ -486,10 +508,21 @@ class LeanREPL:
         cmd = self.repl_cmd
         return len(cmd) >= 2 and cmd[0] == "lake" and cmd[1] == "exe"
 
+    def _kill_and_restart(self) -> None:
+        """Kill a hung/dead process and spawn a fresh one. Session env is gone."""
+        self._kill()
+        try:
+            self.start()
+        except OSError:
+            pass
+
     def _ensure_running(self) -> None:
         if self._proc is not None and self._proc.poll() is not None:
             self._kill()
         if self._proc is None:
+            if self._started:
+                self.start()
+                return
             raise LeanREPLError("REPL is not running; call start() (or restart()) first")
 
     def _stderr(self) -> str:

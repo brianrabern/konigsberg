@@ -49,9 +49,11 @@ _ENV_LLAMA_MODEL = "LLAMA_CPP_MODEL"
 _ENV_LOCAL_CHEAP = "KONIGSBERG_CHEAP_MODEL"
 _ENV_TIMEOUT = "KONIGSBERG_LLM_TIMEOUT"
 _ENV_MAX_TOKENS = "KONIGSBERG_MAX_TOKENS"
+_ENV_THINKING = "KONIGSBERG_ENABLE_THINKING"
 _DEFAULT_LOCAL_BASE = "http://127.0.0.1:8080/v1"
 _DEFAULT_LOCAL_MODEL = "local"
-_DEFAULT_LOCAL_TIMEOUT = 600.0
+# Eva/llama.cpp do not stream; urllib timeout is idle-on-socket.
+_DEFAULT_LOCAL_TIMEOUT = 1800.0
 
 _LOCAL_PROVIDER_NAMES = frozenset(
     {"openai", "local", "llama.cpp", "llamacpp", "openai-compat"}
@@ -197,6 +199,17 @@ def _default_max_tokens() -> int:
     if raw:
         return int(raw)
     return 4096
+
+
+def _chat_template_kwargs() -> dict:
+    """Qwen3 thinking fills max_tokens with ``reasoning_content`` and no tools.
+
+    llama.cpp honors ``chat_template_kwargs.enable_thinking``. Non-thinking
+    GGUFs ignore it. Default off; set ``KONIGSBERG_ENABLE_THINKING=1`` to allow.
+    """
+    raw = os.environ.get(_ENV_THINKING, "").strip().lower()
+    on = raw in {"1", "true", "yes", "on"}
+    return {"enable_thinking": on}
 
 
 def default_frontier_id() -> str:
@@ -593,8 +606,13 @@ def _parse_openai_response(payload: dict) -> Turn:
     content = message.get("content") or ""
     if not isinstance(content, str):
         content = str(content)
+    reasoning = message.get("reasoning_content") or ""
+    if not isinstance(reasoning, str):
+        reasoning = str(reasoning)
     stripped = _THINK_RE.sub("", content).strip()
     qwen_calls = _parse_qwen_tool_calls(stripped)
+    if not qwen_calls and reasoning:
+        qwen_calls = _parse_qwen_tool_calls(_THINK_RE.sub("", reasoning).strip())
     if qwen_calls:
         return qwen_calls
     return AssistantText(stripped)
@@ -616,6 +634,12 @@ def _post_chat_completions(
     try:
         with urlopen(req, timeout=timeout_s) as resp:
             raw = resp.read().decode("utf-8")
+    except TimeoutError as e:
+        raise RuntimeError(
+            f"LLM timed out after {timeout_s:.0f}s at {url} "
+            "(no bytes yet — many servers do not stream; raise "
+            "KONIGSBERG_LLM_TIMEOUT)"
+        ) from e
     except HTTPError as e:
         err_body = ""
         try:
@@ -624,6 +648,13 @@ def _post_chat_completions(
             err_body = ""
         raise RuntimeError(f"LLM HTTP {e.code} at {url}: {err_body or e.reason}") from e
     except URLError as e:
+        reason = str(e.reason)
+        if "timed out" in reason.lower():
+            raise RuntimeError(
+                f"LLM timed out after {timeout_s:.0f}s at {url} "
+                "(no bytes yet — many servers do not stream; raise "
+                "KONIGSBERG_LLM_TIMEOUT)"
+            ) from e
         raise RuntimeError(
             f"cannot reach LLM at {url} ({e.reason}). "
             "Is llama-server running? Set OPENAI_BASE_URL / LLAMA_CPP_BASE_URL."
@@ -704,6 +735,7 @@ class OpenAICompatibleModel:
         if tools:
             payload["tools"] = _tools_to_openai(tools)
             payload["tool_choice"] = "auto"
+        payload["chat_template_kwargs"] = _chat_template_kwargs()
         url = f"{self.base_url}/chat/completions"
         data = _post_chat_completions(
             url, payload, api_key=self.api_key, timeout_s=self.timeout_s

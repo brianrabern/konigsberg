@@ -21,7 +21,7 @@ from .ledger import (
     Provenance,
     TrustRoot,
 )
-from .lemmas import LemmaNotebook, LockedLemma
+from .lemmas import LemmaNotebook, LockedLemma, lemma_has_hole
 from .models import (
     AssistantText,
     HistoryItem,
@@ -198,6 +198,8 @@ class SessionStore:
 
     def log_lemma(self, session: Session, lemma: LockedLemma) -> None:
         """Lock a proved snippet on the working notebook (append-only JSONL)."""
+        if lemma_has_hole(lemma):
+            return
         session.notebook.lock(lemma)
         session.touch()
         self.write_event(session.id, {"type": "lemma", **lemma.to_dict()})
@@ -255,7 +257,9 @@ class SessionStore:
                 # Reconstruct trust state from recorded claims — never re-run tools.
                 session.ledger.record(claim_from_dict(event))
             elif et == "lemma":
-                session.notebook.lock(LockedLemma.from_dict(event))
+                lemma = LockedLemma.from_dict(event)
+                if not lemma_has_hole(lemma):
+                    session.notebook.lock(lemma)
             elif et == "compact":
                 kept = [history_item_from_dict(i) for i in event.get("kept") or []]
                 history = [UserMsg(event["summary"]), *kept]

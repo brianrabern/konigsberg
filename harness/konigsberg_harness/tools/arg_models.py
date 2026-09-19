@@ -161,6 +161,7 @@ class MakeGraphArgs(BaseModel):
     parts: list[int] | None = None
     edges: list[list[int]] | None = None
     graph6: str | None = None
+    other: str | None = None  # second graph6 when kind='join'
 
 
 class Graph6EncodeArgs(BaseModel):

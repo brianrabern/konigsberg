@@ -13,8 +13,9 @@ from __future__ import annotations
 
 import re
 
-from ..lean_repl import GoalState, LeanREPL
+from ..lean_repl import GoalState, LeanREPL, LeanREPLError
 from ..ledger import Claim, mint_lean_proof, mint_lean_statement
+from ..lemmas import HOLE_AXIOMS
 
 _SEARCH_TACTICS = ("exact?", "apply?")
 
@@ -22,6 +23,92 @@ _SEARCH_TACTICS = ("exact?", "apply?")
 # "Try these:" header followed by • / · bulleted tactics.
 _SUGGESTION = re.compile(r"Try (?:this|these):\s*(.*)")
 _BULLET = re.compile(r"^\s*[•·]\s*(.+)$")
+# Live REPL commands run *after* DEFAULT_SCRATCH_PREAMBLE. A later `import`
+# is a parse error ("must be used in the beginning of the file") and is the
+# usual Eva miss: it pastes `import Mathlib` into lean_prove.
+_IMPORT_LINE = re.compile(r"^\s*import\s+\S+")
+
+
+def strip_repl_imports(snippet: str) -> tuple[str, list[str]]:
+    """Drop ``import …`` lines. Scratch env already loaded Konigsberg + Tactic."""
+    stripped: list[str] = []
+    kept: list[str] = []
+    for line in snippet.splitlines(keepends=True):
+        if _IMPORT_LINE.match(line):
+            stripped.append(line.strip())
+        else:
+            kept.append(line)
+    return "".join(kept).strip(), stripped
+
+
+def format_compile_miss(
+    lean_name: str,
+    errors: list[str] | str,
+    *,
+    durable: bool = False,
+    stripped_imports: list[str] | None = None,
+    missing_decl: bool = False,
+) -> str:
+    """Short, actionable lean_prove failure — compile miss, not a kernel proof."""
+    if isinstance(errors, str):
+        msgs = [errors] if errors.strip() else []
+    else:
+        msgs = [str(e).strip() for e in errors if str(e).strip()]
+    first = re.sub(r"\s+", " ", msgs[0]) if msgs else "(no Lean message)"
+    if len(first) > 400:
+        first = first[:397] + "..."
+    extra = ""
+    if stripped_imports:
+        extra = (
+            " Dropped illegal `import` lines (scratch env already has "
+            "Konigsberg + Mathlib.Tactic)."
+        )
+    if missing_decl:
+        return (
+            f"LEAN COMPILE MISS `{lean_name}`: snippet had no errors but that "
+            f"name is not in the env. Declare `theorem {lean_name}` at the top "
+            f"level (not only inside a namespace).{extra} "
+            "Fix the snippet or abandon this lemma — do not resubmit the same text."
+        )
+    kind = "durable, " if durable else ""
+    return (
+        f"LEAN COMPILE MISS ({kind}not a kernel proof) `{lean_name}`: {first}."
+        f"{extra} Fix the snippet or abandon this lemma — do not resubmit the "
+        "same text. Do not `import` (preamble already loaded)."
+    )
+
+
+def _axioms_or_miss(
+    repl: LeanREPL,
+    lean_name: str,
+    *,
+    timeout_s: float | None,
+    durable: bool,
+    stripped: list[str],
+) -> tuple[str, ...]:
+    try:
+        axioms = tuple(repl.print_axioms(lean_name, timeout_s=timeout_s))
+    except LeanREPLError as exc:
+        raise ValueError(
+            format_compile_miss(
+                lean_name,
+                str(exc),
+                durable=durable,
+                stripped_imports=stripped,
+                missing_decl=True,
+            )
+        ) from exc
+    holes = sorted(HOLE_AXIOMS.intersection(axioms))
+    if holes:
+        raise ValueError(
+            format_compile_miss(
+                lean_name,
+                f"uses {', '.join(holes)} (sorry/admit is not a kernel proof)",
+                durable=durable,
+                stripped_imports=stripped,
+            )
+        )
+    return axioms
 
 
 def _parse_suggestions(text: str) -> list[str]:
@@ -42,8 +129,9 @@ def _parse_suggestions(text: str) -> list[str]:
 
 
 def lean_check(repl: LeanREPL, snippet: str) -> GoalState:
+    body, _stripped = strip_repl_imports(snippet)
     repl.ensure_preamble()
-    return repl.send(snippet)
+    return repl.send(body or snippet)
 
 
 def lean_typecheck_statement(
@@ -82,18 +170,39 @@ def lean_prove(
     When ``durable=False`` (default), elaborate transactionally against the session
     env: commit only on full success. A failed elaboration leaves no declaration
     behind. Session-only proofs are tagged ``[session-only]`` and are not promotable.
+
+    Compile misses raise ``ValueError`` with a ``LEAN COMPILE MISS`` banner
+    (truncated first Lean error + what to do). They never mint a proof Claim.
+    Leading ``import`` lines are stripped: the scratch env already loaded them.
     """
+    body, stripped = strip_repl_imports(snippet)
+    if not body:
+        raise ValueError(
+            format_compile_miss(
+                lean_name,
+                "snippet was only `import` lines",
+                durable=durable,
+                stripped_imports=stripped,
+            )
+        )
+
     if durable:
         snap = repl.snapshot()
         try:
             repl.load_preamble(timeout_s=timeout_s if timeout_s is not None else 300)
-            state = repl.send_transactional(snippet, timeout_s=timeout_s)
+            state = repl.send_transactional(body, timeout_s=timeout_s)
             if not state.ok:
                 raise ValueError(
-                    f"durable proof failed (snippet not self-contained against "
-                    f"corpus): {state.errors}"
+                    format_compile_miss(
+                        lean_name,
+                        state.errors,
+                        durable=True,
+                        stripped_imports=stripped,
+                    )
                 )
-            axioms = tuple(repl.print_axioms(lean_name, timeout_s=timeout_s))
+            axioms = _axioms_or_miss(
+                repl, lean_name, timeout_s=timeout_s, durable=True, stripped=stripped
+            )
             claim = mint_lean_proof(
                 statement=lean_name,
                 axioms=axioms,
@@ -106,17 +215,23 @@ def lean_prove(
         # new decl. Install it into the session env so later lemmas can use it.
         try:
             repl.ensure_preamble(timeout_s=timeout_s)
-            inst = repl.send_transactional(snippet, timeout_s=timeout_s)
+            inst = repl.send_transactional(body, timeout_s=timeout_s)
             _ = inst.ok
         except Exception as exc:  # noqa: BLE001 — Claim already minted; install is best-effort
             _ = exc
         return claim
 
     repl.ensure_preamble(timeout_s=timeout_s)
-    state = repl.send_transactional(snippet, timeout_s=timeout_s)
+    state = repl.send_transactional(body, timeout_s=timeout_s)
     if not state.ok:
-        raise ValueError(f"proof failed: {state.errors}")
-    axioms = tuple(repl.print_axioms(lean_name, timeout_s=timeout_s))
+        raise ValueError(
+            format_compile_miss(
+                lean_name, state.errors, stripped_imports=stripped
+            )
+        )
+    axioms = _axioms_or_miss(
+        repl, lean_name, timeout_s=timeout_s, durable=False, stripped=stripped
+    )
     return mint_lean_proof(
         statement=lean_name, axioms=axioms, tool="lean_prove", durable=False
     )

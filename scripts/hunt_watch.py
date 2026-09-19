@@ -33,6 +33,26 @@ from pathlib import Path
 CORE_RE = re.compile(r"core=([^,\s]+)")
 _DEFAULT_DIR = Path.home() / ".konigsberg" / "sessions"
 _W = 72  # panel width
+# Illegal discharging args + session Ctrl-C + the fixed Zykov-join bug are
+# history, not hunt health. Don't paint the panel red for them.
+_IGNORED_ERR = (
+    "μ must specify degrees",
+    "non-conserving rule",
+    "Caught keyboard interrupt",
+    "module 'networkx' has no attribute 'join'",
+    "unknown graph kind 'join'",
+    "kind='join' is Zykov",
+    "LEAN COMPILE MISS",
+    "proof failed:",
+    "durable proof failed",
+    "does not elaborate",
+    "validation errors for DischargingArgs",
+    "#print axioms",
+    "invalid 'import' command",
+    "exceeds live cap",
+    "timed out after",
+    "TOOL BUDGET EXCEEDED",
+)
 
 
 # ── colour ────────────────────────────────────────────────────────────────
@@ -111,6 +131,14 @@ def _hhmmss(ts: datetime | None) -> str:
     return ts.astimezone().strftime("%H:%M:%S") if ts else "--:--:--"
 
 
+def _is_health_error(ev: dict) -> bool:
+    """True for unexpected tool failures that should flag the dashboard."""
+    if not ev.get("is_error"):
+        return False
+    body = str(ev.get("content") or "")
+    return not any(needle in body for needle in _IGNORED_ERR)
+
+
 # ── parse ─────────────────────────────────────────────────────────────────
 def _claim_fields(ev: dict) -> tuple[str, str, bool]:
     stmt = str(ev.get("statement") or "")
@@ -122,7 +150,11 @@ def _classify(stmt: str, tool: str) -> str:
     s = stmt.upper()
     if "FORBIDDEN CONFIGURATION" in s:
         return "forbidden-config"
-    if "UNAVOIDABLE" in s or tool == "discharging_unavoidable":
+    # Real HITs are minted by discharging_unavoidable as
+    # "UNAVOIDABLE (BK D=… discharging): cores=…". Do not match the
+    # substring UNAVOIDABLE — Lean names like
+    # reducible_and_unavoidable_imp_no_counterexample would false-close.
+    if tool == "discharging_unavoidable" or s.startswith("UNAVOIDABLE (BK"):
         return "discharging"
     if "VIOLATES BK" in s:
         return "BK-violation(!)"
@@ -164,9 +196,17 @@ def summarize(events: list[dict]) -> dict:
         if "PROVED" in t and "Borodin" in t:
             settlement = t[:150]
 
+    # discharging: attempts vs closures (discharging_unavoidable HIT claims)
+    call_name = {e.get("id"): e.get("name") for e in tcalls}
+    disc_res = [e for e in tres if call_name.get(e.get("id")) == "discharging_unavoidable"]
+    disc_attempts = sum(1 for e in tcalls if e.get("name") == "discharging_unavoidable")
+    disc_closed = kinds.get("discharging", 0)
+    last_survivor = (str(disc_res[-1].get("content") or "")[:96] if disc_res else None)
+
     durable = [(l.get("lean_name", "?"), True) for l in lemmas if l.get("durable")]
     sess_lemmas = [(l.get("lean_name", "?"), False) for l in lemmas if not l.get("durable")]
-    errors = [e for e in tres if e.get("is_error")]
+    errors = [e for e in tres if _is_health_error(e)]
+    n_err_recent = sum(1 for e in errors if _age(_ts(e.get("at")))[1] < 120)
     redisc = sum(1 for e in events if "REDISCOVERY" in str(e.get("text") or "").upper())
 
     ts_all = [t for t in (_ts(e.get("at")) for e in events) if t]
@@ -183,8 +223,11 @@ def summarize(events: list[dict]) -> dict:
         "tool_hist": Counter(str(e.get("name") or "?") for e in tcalls),
         "n_tcalls": len(tcalls), "n_asst": len(asst), "n_user": len(users),
         "n_err": len(errors),
+        "n_err_recent": n_err_recent,
         "last_err": (str(errors[-1].get("content") or "")[:70] if errors else ""),
         "redisc": redisc, "last_discharge": last_discharge,
+        "disc_attempts": disc_attempts, "disc_closed": disc_closed,
+        "last_survivor": last_survivor,
         "settlement": settlement, "recent": recent,
     }
 
@@ -212,8 +255,11 @@ def _feed_line(kind, ts, ev) -> str:
     if kind == "tool_call":
         return f"{t} {paint('→', c.cyan)} {paint(str(ev.get('name','?')), c.cyan)}"
     if kind == "tool_result":
+        body = str(ev.get("content") or "")[:40]
+        if ev.get("is_error") and _is_health_error(ev):
+            return f"{t} {paint('✗ error', c.red)} {paint(body, c.dim)}"
         if ev.get("is_error"):
-            return f"{t} {paint('✗ error', c.red)} {paint(str(ev.get('content') or '')[:40], c.dim)}"
+            return f"{t} {paint('⟵ miss', c.dim)} {paint(body, c.dim)}"
         return f"{t} {paint('⟵ ok', c.dim)}"
     if kind == "assistant":
         return f"{t} {paint('· model', c.dim)} {paint(str(ev.get('text') or '')[:44], c.dim)}"
@@ -228,7 +274,7 @@ def _feed_line(kind, ts, ev) -> str:
 
 def render(s: dict, flashes: list[str]) -> str:
     age_s, secs = _age(s["last"])
-    if s["n_err"] and secs >= 0 and secs < 120:
+    if s.get("n_err_recent"):
         dot, st = paint("●", c.red), paint("errors", c.red)
     elif secs < 0 or secs > 300:
         dot, st = paint("●", c.yellow), paint("stale / maybe stuck", c.yellow)
@@ -263,12 +309,20 @@ def render(s: dict, flashes: list[str]) -> str:
     L.append(f"   durable lemmas (kernel)      {dl_n}")
     for name, _ in dl[:8]:
         L.append(f"     {paint('★', c.bgreen)} {paint(name.split('.')[-1], c.white)}")
-    disc = s["last_discharge"]
-    if disc:
-        closed = "UNAVOIDABLE" in disc.upper()
-        L.append(f"   discharging   " + paint(disc, c.bgreen if closed else c.yellow))
-    else:
+    att, closed = s["disc_attempts"], s["disc_closed"]
+    if att == 0:
         L.append(f"   discharging   {paint('(no attempt yet)', c.grey)}")
+    elif closed > 0:
+        L.append("   discharging   "
+                 + paint(f"✔ {closed} CLOSED / {att} attempts", c.bgreen, c.bold))
+        if s["last_discharge"]:
+            L.append("     " + paint(s["last_discharge"], c.bgreen))
+    else:
+        L.append("   discharging   "
+                 + paint(f"{att} attempts · 0 closed", c.yellow)
+                 + paint("  (attacking the hard half)", c.dim))
+        if s["last_survivor"]:
+            L.append("     " + paint("last survivor: " + s["last_survivor"], c.dim))
     L.append("")
 
     # CLAIMS — separate real results from graph-construction byproducts
@@ -341,8 +395,7 @@ def _flashes(prev: dict | None, cur: dict) -> list[str]:
     new_proved = [n for n, _ in cur["durable"] if n not in prev_names]
     for n in new_proved:
         out.append(paint(f"★ NEW LEMMA PROVED  {n.split('.')[-1]}", c.bgreen, c.bold))
-    if (cur["last_discharge"] and cur["last_discharge"] != prev.get("last_discharge")
-            and "UNAVOIDABLE" in (cur["last_discharge"] or "").upper()):
+    if cur["disc_closed"] > prev.get("disc_closed", 0):
         out.append(paint("✔ DISCHARGING CLOSED a set — big deal, verify it", c.bgreen, c.bold))
     if cur["settlement"] and cur["settlement"] != prev.get("settlement"):
         out.append(paint("‼ SETTLEMENT SIGNAL just appeared", c.bmagenta, c.bold))

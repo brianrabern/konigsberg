@@ -175,7 +175,9 @@ def build_registry(
         "choosability_refute",
         et.choosability_refute,
         "Given a graph6 string, k, and optional palette: search (CEGAR/SAT) for a "
-        "certificate that the graph is NOT k-choosable. A hit is re-verified "
+        "certificate that the graph is NOT k-choosable. Live hunt caps n≤6 and "
+        "~45s (KONIGSBERG_CHOOSABILITY_MAX_N / _TIMEOUT); listed cores / "
+        "H??F~~~ are already on 𝒞 — do not re-SAT them. A hit is re-verified "
         "(certificate-checked); a miss at the default palette decides k-choosable "
         "(python-checked).",
         args_model=ChoosabilityRefuteArgs,
@@ -194,7 +196,8 @@ def build_registry(
         "Test BK reducibility of a local configuration (core graph6 + ambient "
         "degrees, optional D). f-choosability of the core is SUFFICIENT for "
         "reducibility, not necessary — a miss proves nothing, exactly like "
-        "alon_tarsi. Requires H_BK (Δ=D≥9, K_D-free, D-critical). The "
+        "alon_tarsi. Live hunt caps n≤6 and ~45s — do not retest listed cores. "
+        "Requires H_BK (Δ=D≥9, K_D-free, D-critical). The "
         "bridge BK.reducible_of_fChoosable is formalized; a HIT is still "
         "sufficient-only. HIT mints a forbidden-config Claim; MISS "
         "mints nothing and proves nothing.",
@@ -359,6 +362,9 @@ def build_registry(
             partial(lt.lean_prove, repl),
             "Elaborate a full proof; on success mints a `proved` Claim carrying "
             "#print axioms. The only tool that can mint kernel-trust. "
+            "Do not `import` Mathlib/Konigsberg — the scratch env already loaded "
+            "them (imports are stripped, then illegal). A compile miss is not a "
+            "proof; rewrite the snippet or abandon the lemma. "
             "Pass durable=True to elaborate against a fresh corpus env (no session "
             "decls) — required for promotability. Session-only proofs are tagged "
             "[session-only] and lean_add_to_library refuses them. Every success "

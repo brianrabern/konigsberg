@@ -138,29 +138,35 @@ for line in sys.stdin:
 """
 
 
-def test_stdout_closed_kills_process_so_restart_works():
+def test_stdout_closed_auto_restarts_so_next_send_works():
     repl = LeanREPL(repl_cmd=[sys.executable, "-c", FAKE_REPL_EXIT], timeout_s=5)
     repl.start()
     assert repl.send("first").ok
-    with pytest.raises(LeanREPLError, match="stdout closed|not running|stdin write"):
-        repl.send("second")
-    assert repl._proc is None
-    repl.restart()
-    assert repl.send("after-restart").ok
+    # Process exited after the reply; the next send must spawn a fresh REPL
+    # instead of raising "not running" (the forever-hunt failure mode).
+    assert repl.send("second").ok
     repl.close()
+    with pytest.raises(LeanREPLError, match="not running"):
+        repl.send("after-close")
 
 
-def test_timeout_kills_the_process():
+def test_timeout_kills_hung_process_and_starts_a_fresh_one():
     repl = LeanREPL(
         repl_cmd=[sys.executable, "-c", "import time; time.sleep(30)"],
         timeout_s=0.3,
     )
     repl.start()
+    hung = repl._proc
     t0 = time.monotonic()
-    with pytest.raises(LeanREPLTimeout):
+    with pytest.raises(LeanREPLTimeout, match="REPL restarted"):
         repl.send("anything")
     assert time.monotonic() - t0 < 5  # did not wait for the 30s sleep
-    assert repl._proc is None  # killed, env forfeit
+    assert hung is not None and hung.poll() is not None  # hung process gone
+    assert repl._proc is not None and repl._proc.poll() is None  # fresh REPL
+    assert repl._env is None  # session env forfeited
+    repl.close()
+    with pytest.raises(LeanREPLError, match="not running"):
+        repl.send("after-close")
 
 
 def test_restart_does_not_see_stale_eof():

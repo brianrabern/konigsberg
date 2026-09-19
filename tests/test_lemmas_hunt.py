@@ -60,6 +60,54 @@ def test_session_lemma_round_trip(tmp_path):
     assert got.snippet.startswith("theorem bar")
 
 
+def test_session_skips_sorry_lemmas_on_load(tmp_path):
+    store = SessionStore(tmp_path)
+    sess = store.create()
+    store.write_event(
+        sess.id,
+        {
+            "type": "lemma",
+            "lean_name": "hole",
+            "snippet": "theorem hole : True := sorry",
+            "durable": False,
+            "axioms": ["sorryAx"],
+        },
+    )
+    loaded = store.load(sess.id)
+    assert loaded.notebook.lemmas == []
+
+
+def test_log_lemma_refuses_sorry(tmp_path):
+    store = SessionStore(tmp_path)
+    sess = store.create()
+    store.log_lemma(
+        sess,
+        LockedLemma(
+            lean_name="hole",
+            snippet="theorem hole : True := sorry",
+            axioms=("sorryAx",),
+        ),
+    )
+    assert sess.notebook.lemmas == []
+
+
+def test_lock_from_prove_skips_sorry_axioms():
+    from konigsberg_harness.agent import _lock_from_prove
+    from konigsberg_harness.session import Session
+
+    sess = Session.create()
+    claim = mint_lean_proof(
+        "hole", axioms=("propext", "sorryAx"), tool="lean_prove"
+    )
+    call = ToolCall(
+        id="1",
+        name="lean_prove",
+        args={"lean_name": "hole", "snippet": "theorem hole : True := sorry"},
+    )
+    _lock_from_prove(sess, call, claim, store=None)
+    assert sess.notebook.lemmas == []
+
+
 def test_chat_lean_prove_locks_snippet_without_stopping_early():
     reg = ToolRegistry()
     reg.register(
@@ -200,6 +248,28 @@ def _bk_campaign_registry(bk_type_ok: bool = True) -> ToolRegistry:
     reg = _prove_registry(bk_type_ok=bk_type_ok)
     reg.register("bk_predicate", predicate, args_model=BkPredicateArgs)
     return reg
+
+
+def test_forever_survives_llm_timeout():
+    class BoomThenOk:
+        def __init__(self) -> None:
+            self.n = 0
+
+        def respond(self, history, tools, *, tier: Tier):
+            self.n += 1
+            if self.n == 1:
+                raise TimeoutError("The read operation timed out")
+            return AssistantText("recovered")
+
+    result = Agent(
+        ToolRegistry(),
+        BoomThenOk(),
+        AgentConfig(hunt=True, hunt_forever=True, hunt_max_rounds=2),
+    ).run("campaign")
+    assert result.final is None
+    assert result.steps == 2
+    texts = [getattr(i, "text", "") for i in (result.session.history if result.session else [])]
+    assert any("timed out" in t for t in texts)
 
 
 def test_forever_does_not_stop_on_lean_prove():

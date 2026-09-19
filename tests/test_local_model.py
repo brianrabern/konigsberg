@@ -36,6 +36,9 @@ def _clear_provider_env(monkeypatch) -> None:
         "LLAMA_CPP_MODEL",
         "KONIGSBERG_CHEAP_MODEL",
         "OPENAI_API_KEY",
+        "KONIGSBERG_ENABLE_THINKING",
+        "KONIGSBERG_MAX_TOKENS",
+        "KONIGSBERG_LLM_TIMEOUT",
     ):
         monkeypatch.delenv(key, raising=False)
 
@@ -212,6 +215,27 @@ def test_respond_posts_chat_completions(monkeypatch):
     assert payload["model"] == "qwen-coder-32b"
     assert payload["tools"][0]["function"]["name"] == "verify_coloring"
     assert payload["messages"][0]["role"] == "system"
+    assert payload["chat_template_kwargs"] == {"enable_thinking": False}
+
+
+def test_parse_openai_reasoning_content_qwen_tools():
+    text = '<tool_call>\n{"name": "campaign_status", "arguments": {}}\n</tool_call>'
+    turn = _parse_openai_response(
+        {
+            "choices": [
+                {
+                    "message": {
+                        "content": "",
+                        "reasoning_content": text,
+                        "tool_calls": [],
+                    }
+                }
+            ]
+        }
+    )
+    assert turn == [
+        ToolCall(id="call_qwen_1", name="campaign_status", args={})
+    ]
 
 
 def test_build_live_model_local(monkeypatch):

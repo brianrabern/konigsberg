@@ -48,6 +48,31 @@ def test_next_unminted_seed_skips_rederived():
     assert done == total == len(seeds)
 
 
+def test_next_unminted_seed_matches_canonical_core():
+    from konigsberg_empirical.fundamentals.codec import canonical_graph6_str
+
+    seeds = load_reducible_seeds()
+    first = seeds[0]
+    canon = canonical_graph6_str(first.core)
+    assert next_unminted_seed((canon,)) is seeds[1]
+    done, total = seeds_rederived_count((canon,))
+    assert done == 1
+    assert total == len(seeds)
+
+
+def test_p3_and_p4_seed_specs_hit_at_d9():
+    from konigsberg_harness.ledger import Claim
+    from konigsberg_harness.tools.empirical_tools import reducible_configuration
+
+    by_name = {s.name: s for s in load_reducible_seeds()}
+    for name in ("CR_low_P3", "CR_low_P4"):
+        seed = by_name[name]
+        result = reducible_configuration(
+            seed.core, degrees=list(seed.degrees), D=seed.D
+        )
+        assert isinstance(result, Claim), f"{name} {seed.degrees} D={seed.D} missed"
+
+
 def test_bridge_is_formalized_in_corpus():
     assert bridge_is_formalized() is True
 
