@@ -38,10 +38,13 @@ _W = 72  # panel width
 _IGNORED_ERR = (
     "μ must specify degrees",
     "non-conserving rule",
+    "ledger coupling",
     "Caught keyboard interrupt",
     "module 'networkx' has no attribute 'join'",
     "unknown graph kind 'join'",
     "kind='join' is Zykov",
+    "from_edges requires n=",
+    "bad edge (",
     "LEAN COMPILE MISS",
     "proof failed:",
     "durable proof failed",
@@ -51,6 +54,9 @@ _IGNORED_ERR = (
     "invalid 'import' command",
     "exceeds live cap",
     "timed out after",
+    "no complete reply within",
+    "REPL is not running",
+    "no session declaration matching",
     "TOOL BUDGET EXCEEDED",
 )
 
@@ -148,13 +154,14 @@ def _claim_fields(ev: dict) -> tuple[str, str, bool]:
 
 def _classify(stmt: str, tool: str) -> str:
     s = stmt.upper()
+    if "IRREDUCIBLE-FRONTIER" in s:
+        return "irreducible-frontier"
     if "FORBIDDEN CONFIGURATION" in s:
         return "forbidden-config"
-    # Real HITs are minted by discharging_unavoidable as
-    # "UNAVOIDABLE (BK D=… discharging): cores=…". Do not match the
-    # substring UNAVOIDABLE — Lean names like
+    # Real HITs are minted as "UNAVOIDABLE (BK D=… discharging): cores=…".
+    # Do not match the substring UNAVOIDABLE — Lean names like
     # reducible_and_unavoidable_imp_no_counterexample would false-close.
-    if tool == "discharging_unavoidable" or s.startswith("UNAVOIDABLE (BK"):
+    if s.startswith("UNAVOIDABLE (BK"):
         return "discharging"
     if "VIOLATES BK" in s:
         return "BK-violation(!)"
@@ -196,12 +203,23 @@ def summarize(events: list[dict]) -> dict:
         if "PROVED" in t and "Borodin" in t:
             settlement = t[:150]
 
-    # discharging: attempts vs closures (discharging_unavoidable HIT claims)
+    # discharging: attempts vs closures (UNAVOIDABLE HIT claims)
     call_name = {e.get("id"): e.get("name") for e in tcalls}
-    disc_res = [e for e in tres if call_name.get(e.get("id")) == "discharging_unavoidable"]
-    disc_attempts = sum(1 for e in tcalls if e.get("name") == "discharging_unavoidable")
+    disc_tools = {"discharging_unavoidable", "discharging_search"}
+    disc_res = [e for e in tres if call_name.get(e.get("id")) in disc_tools]
+    disc_attempts = sum(1 for e in tcalls if e.get("name") in disc_tools)
     disc_closed = kinds.get("discharging", 0)
     last_survivor = (str(disc_res[-1].get("content") or "")[:96] if disc_res else None)
+    last_search = None
+    for e in reversed(events):
+        body = str(e.get("content") or e.get("statement") or "")
+        if "DISCHARGING_SEARCH" not in body:
+            continue
+        for line in body.splitlines():
+            if "DISCHARGING_SEARCH" in line:
+                last_search = line.strip()[:110]
+                break
+        break
 
     durable = [(l.get("lean_name", "?"), True) for l in lemmas if l.get("durable")]
     sess_lemmas = [(l.get("lean_name", "?"), False) for l in lemmas if not l.get("durable")]
@@ -227,7 +245,7 @@ def summarize(events: list[dict]) -> dict:
         "last_err": (str(errors[-1].get("content") or "")[:70] if errors else ""),
         "redisc": redisc, "last_discharge": last_discharge,
         "disc_attempts": disc_attempts, "disc_closed": disc_closed,
-        "last_survivor": last_survivor,
+        "last_survivor": last_survivor, "last_search": last_search,
         "settlement": settlement, "recent": recent,
     }
 
@@ -323,10 +341,13 @@ def render(s: dict, flashes: list[str]) -> str:
                  + paint("  (attacking the hard half)", c.dim))
         if s["last_survivor"]:
             L.append("     " + paint("last survivor: " + s["last_survivor"], c.dim))
+        if s.get("last_search"):
+            L.append("     " + paint("search: " + s["last_search"], c.cyan))
     L.append("")
 
     # CLAIMS — separate real results from graph-construction byproducts
     palette = {"forbidden-config": c.green, "discharging": c.bgreen,
+               "irreducible-frontier": c.yellow,
                "lean-proof": c.bgreen, "reducible-hit": c.cyan,
                "census/search": c.blue, "BK-violation(!)": c.bmagenta}
     result_kinds = set(palette)
@@ -357,9 +378,11 @@ def render(s: dict, flashes: list[str]) -> str:
     top = "  ".join(f"{paint(str(n),c.cyan)}×{name}"
                     for name, n in s["tool_hist"].most_common(6))
     L.append(f"   {top or paint('(no tool calls yet)', c.grey)}")
-    if s["n_err"]:
-        L.append(f"   {paint('⚠ tool errors ' + str(s['n_err']), c.red)}  "
+    if s["n_err_recent"]:
+        L.append(f"   {paint('⚠ tool errors ' + str(s['n_err_recent']), c.red)}  "
                  f"{paint(s['last_err'], c.dim)}")
+    elif s["n_err"]:
+        L.append("   " + paint(f"stale tool errors {s['n_err']} (not live)", c.dim))
     if s["redisc"]:
         L.append(f"   {paint('↻ rediscovery ' + str(s['redisc']), c.yellow)} "
                  f"{paint('(staircase steering off dupes)', c.dim)}")

@@ -1,5 +1,6 @@
 """Discharging half of the Rabern BK method (v1: D = 9 only)."""
 
+from .catalog import CatalogCover, CatalogEntry, cover_type, load_rabern_catalog
 from .engine import (
     CLOSURE_LEMMA,
     CLOSURE_TAG,
@@ -11,12 +12,22 @@ from .engine import (
     DischargingArgument,
     LocalType,
     Rule,
+    Survivor,
     ToolBudgetExceeded,
     build_argument,
     core_forced_in_type,
+    global_sign,
+    intended_sign,
     local_types,
     unavoidable_statement,
     verify_unavoidable,
+)
+from .search import (
+    SearchOutcome,
+    describe_cover,
+    format_search_banner,
+    frontier_statement,
+    run_search,
 )
 
 __all__ = [
@@ -24,16 +35,28 @@ __all__ = [
     "CLOSURE_TAG",
     "MAX_RADIUS",
     "V1_D",
+    "CatalogCover",
+    "CatalogEntry",
     "Charge",
     "DischargeRejected",
     "DischargeResult",
     "DischargingArgument",
     "LocalType",
     "Rule",
+    "SearchOutcome",
+    "Survivor",
     "ToolBudgetExceeded",
     "build_argument",
     "core_forced_in_type",
+    "cover_type",
+    "describe_cover",
+    "format_search_banner",
+    "frontier_statement",
+    "global_sign",
+    "intended_sign",
+    "load_rabern_catalog",
     "local_types",
+    "run_search",
     "unavoidable_statement",
     "verify_unavoidable",
 ]

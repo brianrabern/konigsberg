@@ -105,8 +105,19 @@ def graph6_encode(n: int, edges: list[list[int]]) -> Claim:
     return _pc(f"graph6_encode → {s} (n={n}, m={len(edges)})", tool="graph6_encode")
 
 
-def graph6_decode(graph6: str) -> Claim:
+def graph6_decode(graph6: str, *, bind=None) -> Claim:
     """Decode graph6 → {n, edges}."""
+    if bind is not None:
+        from .errors import ToolBudgetExceeded
+
+        n = bind.graph6_decode_counts.get(graph6, 0) + 1
+        bind.graph6_decode_counts[graph6] = n
+        if n > 2:
+            raise ToolBudgetExceeded(
+                "graph6_decode",
+                f"{graph6!r} already decoded this session — not an increment. "
+                "NEXT is a new core, lemma, or literature pin — not another decode.",
+            )
     data = _decode(graph6)
     return _pc(
         f"graph6_decode({graph6!r}) → n={data['n']}, edges={data['edges']}",
@@ -849,6 +860,8 @@ TOOL_CATEGORY: dict[str, str] = {
     "verify_coloring": "coloring",
     "reducible_configuration": "reduction",
     "discharging_unavoidable": "reduction",
+    "discharging_cover": "reduction",
+    "discharging_search": "reduction",
     "campaign_status": "reduction",
     # formal
     "lean_check": "formal",

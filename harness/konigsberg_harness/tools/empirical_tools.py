@@ -288,17 +288,22 @@ def discharging_unavoidable(
     except _dis.ToolBudgetExceeded as e:
         raise ToolBudgetExceeded("discharging_unavoidable", str(e)) from e
     except _dis.DischargeRejected as e:
+        if bind is not None:
+            bind.last_discharge_note = str(e)
+            bind.last_discharge_survivors = ()
         raise ValueError(str(e)) from e
 
     if not result.hit:
         if bind is not None:
             bind.last_discharge_survivors = result.survivors
+            bind.last_discharge_note = result.reason
         return DischargingResult(
             assert_sufficient_only(result.reason), survivors=result.survivors
         )
 
     if bind is not None:
         bind.last_discharge_survivors = ()
+        bind.last_discharge_note = ""
     stmt = _dis.unavoidable_statement(arg, result)
     n_types = len(_dis.local_types(arg.D))
     return mint_enumeration(
@@ -306,6 +311,103 @@ def discharging_unavoidable(
         bound=f"D={arg.D} local-types={n_types}",
         exhaustive=True,
         tool="discharging_unavoidable",
+    )
+
+
+def discharging_cover(
+    bind,
+    center_deg: int,
+    n_high: int,
+    n_low: int | None = None,
+) -> str:
+    """Catalog cover of a v1 local type via ``core_forced_in_type``.
+
+    Does not mint a Claim. Unminted hits are hints for
+    ``reducible_configuration``; only ledger cores may enter 𝒞.
+    """
+    from ..campaign import forbidden_cores
+
+    if n_low is None:
+        n_low = int(center_deg) - int(n_high)
+    if int(n_high) + int(n_low) != int(center_deg):
+        raise ValueError(
+            f"n_high+n_low must equal center_deg (got {n_high}+{n_low} vs {center_deg})"
+        )
+    typ = _dis.LocalType(int(center_deg), int(n_high), int(n_low))
+    claims = bind.ledger.claims() if bind is not None and bind.ledger is not None else ()
+    minted = set(forbidden_cores(claims))
+    cover = _dis.cover_type(typ, _dis.load_rabern_catalog(), minted=minted)
+    return _dis.describe_cover(cover, typ)
+
+
+def discharging_search(
+    bind,
+    D: int,
+    mu: dict[str, int],
+    rules: list[dict],
+    forbidden: list[str] | None = None,
+    max_iters: int = 12,
+) -> Claim | DischargingResult:
+    """Cover survivors from the minted catalog, then mutate μ/rules.
+
+    CLOSED mints the same UNAVOIDABLE Claim as ``discharging_unavoidable``.
+    STUCK with a residual mints an irreducible-frontier Claim (not a
+    forbidden configuration). A miss proves nothing.
+    """
+    from ..campaign import forbidden_cores
+    from .errors import ToolBudgetExceeded
+
+    claims = bind.ledger.claims() if bind is not None and bind.ledger is not None else ()
+    reducible = set(forbidden_cores(claims))
+    cores = list(forbidden) if forbidden is not None else list(reducible)
+    try:
+        outcome = _dis.run_search(
+            D=D,
+            mu=mu,
+            rules=rules,
+            forbidden=cores,
+            reducible_cores=reducible,
+            max_iters=max_iters,
+        )
+    except _dis.ToolBudgetExceeded as e:
+        raise ToolBudgetExceeded("discharging_search", str(e)) from e
+    except _dis.DischargeRejected as e:
+        if bind is not None:
+            bind.last_discharge_note = str(e)
+            bind.last_discharge_survivors = ()
+            bind.last_search_banner = ""
+        raise ValueError(str(e)) from e
+
+    banner = _dis.format_search_banner(outcome)
+    if bind is not None:
+        bind.last_search_banner = banner
+        bind.last_discharge_note = outcome.result.reason
+        bind.last_discharge_survivors = (
+            () if outcome.result.hit else outcome.result.survivors
+        )
+
+    if outcome.status == "CLOSED":
+        arg = _dis.build_argument(D, outcome.mu, list(outcome.rules), list(outcome.forbidden))
+        stmt = _dis.unavoidable_statement(arg, outcome.result)
+        n_types = len(_dis.local_types(arg.D))
+        return mint_enumeration(
+            stmt,
+            bound=f"D={arg.D} local-types={n_types} search-iters={outcome.iterations}",
+            exhaustive=True,
+            tool="discharging_search",
+        )
+
+    if not outcome.result.ranked:
+        return DischargingResult(
+            assert_sufficient_only(f"{banner} {outcome.result.reason}"),
+            survivors=outcome.result.survivors,
+        )
+
+    return mint_enumeration(
+        _dis.frontier_statement(outcome),
+        bound=f"residual={len(outcome.result.ranked)} iters={outcome.iterations}",
+        exhaustive=False,
+        tool="discharging_search",
     )
 
 

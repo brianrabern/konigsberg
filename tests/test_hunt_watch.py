@@ -44,6 +44,12 @@ def test_expected_discharging_and_ctrl_c_are_not_health_errors():
         _tr("ERROR LeanREPLError: #print axioms k3_join_E6_fChoosable_degreeSpec failed"),
         _tr("ERROR ValueError: proof failed: [\"invalid 'import' command, it must be used"),
         _tr("ERROR ToolBudgetExceeded: TOOL BUDGET EXCEEDED: choosability_refute — n=9 exceeds live cap 6"),
+        _tr("ERROR ValueError: from_edges requires n= and edges="),
+        _tr("ERROR ValueError: bad edge (4,6) for n=6"),
+        _tr("ERROR ValueError: ledger coupling: forbidden cores not minted reducible: Bw"),
+        _tr("ERROR LeanREPLError: REPL is not running; call start() (or restart()) first"),
+        _tr("ERROR LeanREPLTimeout: no complete reply within 180s; process killed"),
+        _tr("ERROR LeanREPLError: retract: no session declaration matching 'K3J6'"),
     ]
     s = hunt_watch.summarize(events)
     assert s["n_err"] == 0
@@ -118,6 +124,38 @@ def test_discharging_hit_still_counts_as_closed():
     assert any("DISCHARGING CLOSED" in f for f in flashes)
 
 
+def test_frontier_claim_is_not_discharging_closed():
+    stmt = (
+        "DISCHARGING_SEARCH STUCK survivors=9 deficit=9 C=0 iters=4 "
+        "residual=deg9(high=0,low=9). IRREDUCIBLE-FRONTIER "
+        "(BK D=9 discharging): residual types=deg9(high=0,low=9) "
+        "(proves nothing; not a forbidden configuration)."
+    )
+    events = [
+        {"type": "session_meta", "id": "abc", "created_at": _now()},
+        {
+            "type": "claim",
+            "statement": stmt,
+            "provenance": {"tool": "discharging_search", "durable": False},
+            "at": _now(),
+        },
+        {"type": "tool_call", "id": "1", "name": "discharging_search",
+         "at": _now()},
+        {"type": "tool_result", "id": "1", "is_error": False,
+         "content": stmt, "at": _now()},
+    ]
+    s = hunt_watch.summarize(events)
+    assert s["kinds"].get("discharging", 0) == 0
+    assert s["kinds"]["irreducible-frontier"] == 1
+    assert s["disc_closed"] == 0
+    assert s["disc_attempts"] == 1
+    assert s["last_search"] is not None
+    assert "STUCK" in s["last_search"]
+    flashes = hunt_watch._flashes({"cores": [], "durable": [], "disc_closed": 0,
+                                   "last_discharge": None, "settlement": None}, s)
+    assert not any("DISCHARGING CLOSED" in f for f in flashes)
+
+
 def test_compile_miss_is_dim_feed_not_red_error():
     miss = _tr("ERROR ValueError: LEAN COMPILE MISS (not a kernel proof) `foo`: type mismatch.")
     boom = _tr("ERROR TimeoutError: The read operation timed out")
@@ -137,3 +175,6 @@ def test_stale_unexpected_error_does_not_paint_recent():
     s = hunt_watch.summarize(events)
     assert s["n_err"] == 1
     assert s["n_err_recent"] == 0
+    panel = hunt_watch.render(s, [])
+    assert "⚠ tool errors" not in panel
+    assert "stale tool errors 1" in panel

@@ -40,6 +40,8 @@ _EMPIRICAL = {
     "list_critical",
     "reducible_configuration",
     "discharging_unavoidable",
+    "discharging_cover",
+    "discharging_search",
     "campaign_status",
 } | set(FUNDAMENTAL_TOOL_NAMES)
 

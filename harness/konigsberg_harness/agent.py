@@ -180,7 +180,12 @@ Ordinary lemmas lock and the campaign continues. Ctrl-C also stops.
 Build on Rabern, do not restart from Brooks: literature_search Rabern /
 CranstonRabern / KiersteadRabern / RabernBook before inventing lemmas.
 Extend those results into the H_BK reducible-configuration program.
-Use the full instrument on every circuit, not a subset:
+Use the full instrument on every circuit, not a subset. After Rabern seeds
+are on 𝒞, NEXT is whichever unused resource can produce a new locked lemma,
+a new forbidden core, or a real discharging close — not another μ on the
+same residual. Discharging v1 (radius-1, degree charge) cannot move
+deg9(high=9,low=0); switch to a new core, literature, Lean, or another
+checker instead of rerunning discharging_search.
 - Corpus: literature_search, lean_search. arxiv_search for leads only.
   Pin CranstonRabern_BKEquivalentConjectures (f-choosable joins / K₃∗Ē₆),
   CranstonRabern_ChiEqDeltaBigCliques, CranstonRabern_BrooksAndBeyond
@@ -188,26 +193,25 @@ Use the full instrument on every circuit, not a subset:
   dissertation citation, claw-free BK, doubly-critical-edge BK.
 - Bridge: BK.reducible_of_fChoosable is formalized in Literature — do not re-prove it.
 - Reducible configs: reducible_configuration under H_BK (sufficient-only).
-- Discharging: discharging_unavoidable (v1 D=9). You propose μ and rules; the tool verifies.
-  UNAVOIDABLE is sufficient-only; a MISS returns a surviving neighborhood. Closure lemma
-  BK.reducible_and_unavoidable_imp_no_counterexample. Forbidden cores must already be on the ledger.
-- Empirical BK: bk_predicate, bk_search (refutation only), choosability_refute, alon_tarsi, list_critical, decide_colorable, chromatic_number.
+- Discharging: discharging_search / discharging_unavoidable (v1 D=9) VERIFY;
+  they do not invent. Optional after seeds, not the only stair.
+- Empirical BK: bk_predicate, bk_search (refutation only), choosability_refute, alon_tarsi, fixer_breaker, list_critical, decide_colorable, chromatic_number.
 - Graphs: make_graph, blow_up, mycielskian, clique_number, max_degree, independent_hitting_set.
 - Lean: lean_typecheck_statement, lean_check, lean_prove, lemma_list, lemma_read.
 - Staircase: campaign_status — locked lemmas, known cores, discharging closed/not, the NEXT increment.
 Lock every successful lean_prove and reuse it. A finite sweep never proves BK.
 Progress = locked lemmas + new forbidden cores + a closing discharging argument + repaired statements + kernel subproofs.
-Staircase (do the first incomplete step; one increment per circuit):
+Staircase (first incomplete step; one increment per circuit; any listed tool is legal after seeds):
   1. Re-derive Rabern's seed configs (campaign_status lists seeds k/N), then a new core.
-  2. Propose charge+rules; run discharging_unavoidable against ledger 𝒞 (D=9). On a MISS, forbid the surviving neighborhood or repair the rules.
+  2. Open discharging stair: new core, literature pin, kernel lemma, fixer_breaker/AT,
+     or discharging only with a new idea — not another search on deg9(high=9,low=0).
   3. Durable lean_prove of BK.reducible_and_unavoidable_imp_no_counterexample, then borodinKostochka_at_nine (Δ=9 milestone, not halt).
   4. Durable lean_prove of borodinKostochka (Δ ≥ 9).
 Call campaign_status after compaction. Do not retest listed cores. Exhaust the
 Rabern catalogue before inventing configurations. Class-restricted BK is reference, not a target.
-If the stair freezes (same |𝒞|, same durable lemmas, same discharging miss),
-REFORMULATE: trade BK for an a-priori-weaker equivalent *statement*
-(CranstonRabern_BKEquivalentConjectures) — prove it in Lean or close
-discharging. Do not SAT-search K₃∨Ē₆ / H??F~~~ (already on 𝒞).
+If the stair freezes (same |𝒞|, same durable lemmas, same residual),
+REFORMULATE: switch resource. Do not prove equivalent_K3_join_E6
+(Literature sorry) and do not SAT-search K₃∨Ē₆ / H??F~~~ (already on 𝒞).
 """
 
 FOREVER_CONTINUE = (
@@ -215,16 +219,20 @@ FOREVER_CONTINUE = (
     "Stop only on a durable kernel proof of borodinKostochka (Δ ≥ 9) or a "
     "bk_predicate VIOLATES. borodinKostochka_at_nine is a Δ=9 milestone, not halt. "
     "That kernel Claim of the general statement is a proof of the conjecture. "
-    "Build on Rabern (literature_search); do not "
-    "rediscover named results. Take the NEXT stair below — not a core already "
-    "listed. Call campaign_status if the stair is missing. "
-    "A reducible_configuration MISS is sufficient-only — do not repeat the "
+    "Build on Rabern (literature_search) — extend those results, do not "
+    "rediscover named theorems. Take the NEXT stair below — not a core already "
+    "listed. Call campaign_status if the stair is missing. Be creative: a new "
+    "core, a pinned literature lemma, fixer_breaker/AT, or a real lean_prove "
+    "all count. A reducible_configuration MISS is sufficient-only — do not repeat the "
     "same core+degrees. Listed cores are done — do not reducible_configuration, "
     "choosability_refute, or re-join them (including H??F~~~ / K₃∨Ē₆). "
     "A sorry/admit lock is not progress. A lean_prove compile miss is not a "
     "kernel proof — do not resubmit the same snippet or `import` lines "
-    "(scratch env already has Konigsberg). REFORMULATE means discharging or a "
-    "weaker equivalent *statement*, not a SAT on the join gadget. Continue."
+    "(scratch env already has Konigsberg). graph6_decode of a listed core or "
+    "the same string is not an increment. K3JoinE6_adj is locked — do not prove "
+    "degreeSpec / adj_iff of the join. REFORMULATE means switch resource "
+    "(new core, literature, Lean, fixer_breaker) — not another discharging_search "
+    "μ on deg9(high=9,low=0), and not SAT/Lean fishing on the join gadget. Continue."
 )
 
 CAMPAIGN_PROVED = (
@@ -246,6 +254,7 @@ def _hunt_continue_text(
     session: Session | None = None,
     *,
     survivors: tuple[str, ...] = (),
+    discharge_note: str = "",
     stagnation: str = "",
 ) -> str:
     if not config.hunt_forever:
@@ -253,7 +262,10 @@ def _hunt_continue_text(
     if session is None:
         return FOREVER_CONTINUE
     snap = format_campaign_snapshot(
-        session.ledger.claims(), session.notebook.lemmas, survivors=survivors
+        session.ledger.claims(),
+        session.notebook.lemmas,
+        survivors=survivors,
+        discharge_note=discharge_note,
     )
     if stagnation:
         return f"{FOREVER_CONTINUE}\n\n{snap}\n{stagnation}"
@@ -611,6 +623,12 @@ class Agent:
             return ()
         return tuple(getattr(bind, "last_discharge_survivors", ()) or ())
 
+    def _discharge_note(self) -> str:
+        bind = getattr(self.registry, "campaign_bind", None)
+        if bind is None:
+            return ""
+        return str(getattr(bind, "last_discharge_note", "") or "")
+
     def _stagnation_note(self) -> str:
         bind = getattr(self.registry, "campaign_bind", None)
         if bind is None:
@@ -621,12 +639,17 @@ class Agent:
         claims = session.ledger.claims()
         lemmas = session.notebook.lemmas
         survivors = self._discharge_survivors()
-        snap = format_campaign_snapshot(claims, lemmas, survivors=survivors)
+        note = self._discharge_note()
+        snap = format_campaign_snapshot(
+            claims, lemmas, survivors=survivors, discharge_note=note
+        )
         bind = getattr(self.registry, "campaign_bind", None)
         extra = ""
         if bind is not None:
             extra = (
-                note_stagnation(bind, claims, lemmas, survivors=survivors)
+                note_stagnation(
+                    bind, claims, lemmas, survivors=survivors, discharge_note=note
+                )
                 if tick
                 else stagnation_text(bind)
             )
@@ -722,6 +745,7 @@ class Agent:
                                 self.config,
                                 session,
                                 survivors=self._discharge_survivors(),
+                                discharge_note=self._discharge_note(),
                                 stagnation=self._stagnation_note(),
                             )
                         ),

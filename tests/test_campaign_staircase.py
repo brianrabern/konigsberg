@@ -242,6 +242,14 @@ def test_progress_fingerprint_moves_on_new_core_or_miss(monkeypatch):
     assert miss != core
     assert empty[2] == "open"
     assert miss[2].startswith("miss:")
+    nine = (
+        "deg9(high=9,low=0) final=1 deficit=1",
+        "deg9(high=0,low=9) final=1 deficit=1",
+    )
+    a = progress_fingerprint([], [], survivors=(nine[0],))
+    b = progress_fingerprint([], [], survivors=nine)
+    assert a[2] == "stuck:deg9-regular"
+    assert a[2] == b[2]
 
 
 def test_note_stagnation_fires_after_frozen_discharging(monkeypatch):
@@ -251,9 +259,10 @@ def test_note_stagnation_fires_after_frozen_discharging(monkeypatch):
     assert note_stagnation(bind, [], [], survivors=_MISS) == ""
     banner = note_stagnation(bind, [], [], survivors=_MISS)
     assert banner == REFORMULATE_BANNER
-    assert "CranstonRabern_BKEquivalentConjectures" in banner
+    assert "switch resource" in banner.lower() or "Switch resource" in banner
     assert "equivalent_K3_join_E6" in banner
-    assert "a-priori-weaker" in banner
+    assert "graph6_decode" in banner or "graph6_decode" in banner.lower()
+    assert "discharging_search" in banner  # as a thing not to rerun
 
 
 def test_note_stagnation_resets_on_new_core(monkeypatch):
@@ -306,3 +315,56 @@ def test_maybe_inject_staircase_appends_reformulate(monkeypatch):
     assert "REFORMULATE:" not in banners[0]
     assert "REFORMULATE:" not in banners[1]
     assert REFORMULATE_BANNER.strip() in banners[-1]
+
+
+def test_sign_unforced_note_is_not_no_attempt(monkeypatch):
+    _exhaust_catalogue(monkeypatch)
+    note = (
+        "inconclusive: global charge sign is not forced by μ on "
+        "{D-1, D}-vertices (proves nothing)"
+    )
+    nxt = next_step([], [], discharge_note=note)
+    assert "literature_search" in nxt
+    assert "reducible_configuration" in nxt
+    snap = format_campaign_snapshot([], [], discharge_note=note)
+    assert "not closed (no attempt)" not in snap
+    assert "last:" in snap
+    assert "not forced" in snap
+
+
+def test_dummy_closure_alias_is_not_literature_closure():
+    from konigsberg_harness.campaign import has_durable_closure, is_closure_name
+
+    dummy = LockedLemma(
+        lean_name=(
+            "BK.DischargingClosure."
+            "reducible_and_unavoidable_imp_no_counterexample_durable"
+        ),
+        snippet="theorem t : True := trivial",
+        durable=True,
+    )
+    real = LockedLemma(
+        lean_name="BK.reducible_and_unavoidable_imp_no_counterexample",
+        snippet="theorem t : True := trivial",
+        durable=True,
+    )
+    assert not is_closure_name(dummy.lean_name)
+    assert is_closure_name(real.lean_name)
+    assert not has_durable_closure([], [dummy])
+    assert has_durable_closure([], [real])
+
+
+def test_graph6_decode_repeat_is_budget():
+    from konigsberg_harness.tools.errors import ToolBudgetExceeded
+    from konigsberg_harness.tools.registry import build_registry
+
+    reg = build_registry()
+    g6 = "C~~w"
+    reg.dispatch("graph6_decode", {"graph6": g6})
+    reg.dispatch("graph6_decode", {"graph6": g6})
+    try:
+        reg.dispatch("graph6_decode", {"graph6": g6})
+    except ToolBudgetExceeded as e:
+        assert "already decoded" in str(e)
+    else:
+        raise AssertionError("expected ToolBudgetExceeded")

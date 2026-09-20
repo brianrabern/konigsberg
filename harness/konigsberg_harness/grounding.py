@@ -280,29 +280,30 @@ formalized in Literature; HITs name H_BK and are no longer tagged conditional \
 on that lemma. Do not re-prove the bridge. Configurations built from low vertices \
 (d_G(v) = D−1) give D-uniform forbidden lemmas in one shot. \
 \
-The discharging half asks whether the forbidden set 𝒞 must appear. Propose \
-μ and transfer rules; discharging_unavoidable (v1: D=9 only) VERIFIES the \
-argument — it does not invent μ or rules, and success is not guaranteed \
-(BK at Δ=9 is open). UNAVOIDABLE is SUFFICIENT ONLY: a HIT is conditional on \
-BK.reducible_and_unavoidable_imp_no_counterexample; a MISS returns a surviving \
-neighborhood and proves nothing. Forbidden cores passed in must already be \
-minted reducible on the ledger (the two halves are coupled). On a MISS, forbid \
-that neighborhood (back to reducible_configuration with a targeted core) or \
-repair the rules. \
+The discharging half asks whether the forbidden set 𝒞 must appear. \
+discharging_search / discharging_unavoidable (v1: D=9) VERIFY a proposed \
+argument — they do not invent μ or rules. Success is not guaranteed \
+(BK at Δ=9 is open). UNAVOIDABLE is SUFFICIENT ONLY. A HIT is conditional on \
+BK.reducible_and_unavoidable_imp_no_counterexample; a MISS returns ranked \
+surviving neighborhood types and proves nothing. v1 radius-1 degree charge \
+cannot move deg9(high=9,low=0); do not loop discharging_search on that residual. \
+Forbidden cores passed in must already be minted reducible on the ledger. \
+After seeds, the increment may be a new core, a literature pin, a kernel lemma, \
+fixer_breaker / alon_tarsi, or discharging with a new idea — use the full instrument. \
 \
 Progress is COUNTABLE and TWO-DIMENSIONAL: campaign_status lists locked lemmas, \
 |𝒞| and the distinct forbidden cores, Rabern seeds k/N re-derived, the best \
-discharging attempt (closed D=9 over which cores / last miss neighborhood), \
+discharging attempt (closed D=9 over which cores / last miss neighborhood / \
+search survivor count), \
 and the NEXT increment. Do that increment; do not retest a listed core \
 (REDISCOVERY is not progress). If that fingerprint freezes, REFORMULATE: \
-trade the standing BK statement for an a-priori-weaker equivalent \
-(CranstonRabern_BKEquivalentConjectures — χ=Δ=9 ⇒ K₃∗Ē₆) as a *statement* \
-to prove, or close discharging; do not SAT-search the join gadget / H??F~~~ \
-(already on 𝒞) and do not drop the stair. First incomplete step: \
+switch resource (new core / literature / Lean / another checker), not another μ. \
+Do not lean_prove equivalent_K3_join_E6 (Literature sorry) and do not SAT-search \
+the join gadget / H??F~~~. First incomplete step: \
 (1) re-derive Rabern's known forbidden joins/cores (campaign_status names the \
 next un-minted seed) then extend 𝒞, \
-(2) propose μ+rules and run discharging_unavoidable against ledger 𝒞 (D=9); \
-on a MISS, forbid the returned neighborhood or repair the rules, \
+(2) open discharging stair — any unused tool that yields a new core, lemma, or close; \
+on a MISS, do not rerun the same residual, \
 (3) durable lean_prove of BK.reducible_and_unavoidable_imp_no_counterexample, \
 (4) assemble reducible 𝒞 + UNAVOIDABLE certificate ⇒ borodinKostochka_at_nine \
 (Δ=9 milestone; kernel-defeq to the slice, never to the general conjecture), \

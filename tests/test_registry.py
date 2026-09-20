@@ -106,6 +106,16 @@ def test_tool_specs_omit_code_only_tools_and_include_schema():
         "rules",
         "forbidden",
     }
+    assert specs["discharging_cover"]["input_schema"]["properties"].keys() >= {
+        "center_deg",
+        "n_high",
+    }
+    assert specs["discharging_search"]["input_schema"]["properties"].keys() >= {
+        "D",
+        "mu",
+        "rules",
+        "max_iters",
+    }
     assert specs["campaign_status"]["input_schema"]["properties"] == {}
     assert specs["make_graph"]["input_schema"]["properties"].keys() >= {"kind"}
 
@@ -142,6 +152,8 @@ _CORE_EMPIRICAL = {
     "list_critical",
     "reducible_configuration",
     "discharging_unavoidable",
+    "discharging_cover",
+    "discharging_search",
     "campaign_status",
 } | set(FUNDAMENTAL_TOOL_NAMES)
 

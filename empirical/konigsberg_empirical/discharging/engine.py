@@ -75,11 +75,34 @@ class LocalType:
 
 
 @dataclass(frozen=True)
+class Survivor:
+    """One local type that neither contains 𝒞 nor meets the charge bound."""
+
+    typ: LocalType
+    charge: int
+    deficit: int
+    reason: str = "charge-infeasible"
+
+    def label(self) -> str:
+        return (
+            f"{self.typ.label()} final={self.charge} deficit={self.deficit}"
+        )
+
+
+@dataclass(frozen=True)
 class DischargeResult:
     hit: bool
     reason: str
     survivors: tuple[str, ...] = ()
+    ranked: tuple[Survivor, ...] = ()
+    checked: int = 0
+    global_sign: int | None = None
+    intended_sign: int | None = None
     rejected: bool = False
+
+    @property
+    def total_deficit(self) -> int:
+        return sum(s.deficit for s in self.ranked)
 
 
 def _coerce_mu(mu: dict) -> dict[int, int]:
@@ -194,16 +217,45 @@ def _check_conservation(arg: DischargingArgument) -> None:
             )
 
 
-def _global_sign(mu: dict[int, int], D: int) -> int | None:
-    """Forced sign of total charge, or None if mixed / zero."""
+def global_sign(mu: dict[int, int], D: int) -> int | None:
+    """Forced sign of Σμ on a Δ=D graph with δ≥D−1, or None if unforced.
+
+    A Δ=D graph has at least one degree-D vertex, so μ(D)>0 and μ(D−1)≥0
+    forces Σμ ≥ μ(D) > 0 (and the negative twin). Mixed signs and a zero
+    at D with the opposite sign at D−1 remain unforced.
+    """
     low, high = mu.get(D - 1), mu.get(D)
     if low is None or high is None:
         raise DischargeRejected(f"μ must specify degrees {D - 1} and {D}")
-    if low < 0 and high < 0:
-        return -1
-    if low > 0 and high > 0:
+    if high > 0 and low >= 0:
         return 1
+    if high < 0 and low <= 0:
+        return -1
     return None
+
+
+def intended_sign(mu: dict[int, int], D: int) -> int | None:
+    """Sign used to rank local residuals when Σμ may still be unforced.
+
+    HIT still requires ``global_sign``; this only scores which types miss
+    the charge bound so mixed μ can produce a gradient.
+    """
+    forced = global_sign(mu, D)
+    if forced is not None:
+        return forced
+    low, high = mu[D - 1], mu[D]
+    if high != 0:
+        return 1 if high > 0 else -1
+    if low != 0:
+        return 1 if low > 0 else -1
+    return None
+
+
+def _deficit(charge: int, sign: int) -> int:
+    """How far ``charge`` is from the feasible side of ``sign``."""
+    if sign < 0:
+        return max(0, -charge)
+    return max(0, charge)
 
 
 def final_charge(typ: LocalType, arg: DischargingArgument) -> int:
@@ -233,6 +285,8 @@ def verify_unavoidable(
     HIT  — every surviving type meets the charge bound while global Σμ has
            the opposite sign ⇒ 𝒞 is UNAVOIDABLE (sufficient-only).
     MISS — a neighborhood type survives with the wrong sign; proves nothing.
+           Ranked residuals are still returned when Σμ is unforced so a
+           search can use them as a gradient (that miss still cannot HIT).
     """
     if arg.D != V1_D:
         raise DischargeRejected(f"v1 is D={V1_D} only (got D={arg.D})")
@@ -247,44 +301,75 @@ def verify_unavoidable(
             + ", ".join(missing)
         )
     _check_conservation(arg)
-    sign = _global_sign(arg.charge.mu, arg.D)
-    if sign is None:
+    gsign = global_sign(arg.charge.mu, arg.D)
+    isign = intended_sign(arg.charge.mu, arg.D)
+    cores = [parse_graph6(g6) for g6 in arg.forbidden]
+    types = local_types(arg.D)
+    ranked: list[Survivor] = []
+    for typ in types:
+        if any(core_forced_in_type(core, typ) for core in cores):
+            continue
+        if isign is None:
+            continue
+        q = final_charge(typ, arg)
+        deficit = _deficit(q, isign)
+        if deficit > 0:
+            ranked.append(
+                Survivor(
+                    typ=typ,
+                    charge=q,
+                    deficit=deficit,
+                    reason="charge-infeasible",
+                )
+            )
+    ranked.sort(key=lambda s: (s.deficit, s.typ.center_deg, s.typ.n_high))
+    labels = tuple(s.label() for s in ranked)
+
+    if gsign is None:
+        extra = ""
+        if ranked:
+            extra = (
+                f"; ranked residuals {len(ranked)} "
+                "(cannot HIT until Σμ is forced)"
+            )
         return DischargeResult(
             hit=False,
             reason=assert_sufficient_only(
                 "inconclusive: global charge sign is not forced by μ on "
-                "{D-1, D}-vertices (proves nothing)"
+                f"{{D-1, D}}-vertices{extra} (proves nothing)"
             ),
+            survivors=labels,
+            ranked=tuple(ranked),
+            checked=len(types),
+            global_sign=None,
+            intended_sign=isign,
         )
 
-    cores = [parse_graph6(g6) for g6 in arg.forbidden]
-    survivors: list[str] = []
-    for typ in local_types(arg.D):
-        if any(core_forced_in_type(core, typ) for core in cores):
-            continue
-        q = final_charge(typ, arg)
-        ok = q >= 0 if sign < 0 else q <= 0
-        if not ok:
-            survivors.append(f"{typ.label()} final={q}")
-
-    if survivors:
-        shown = "; ".join(survivors[:8])
-        extra = f" (+{len(survivors) - 8} more)" if len(survivors) > 8 else ""
+    if ranked:
+        shown = "; ".join(labels[:8])
+        extra = f" (+{len(ranked) - 8} more)" if len(ranked) > 8 else ""
         return DischargeResult(
             hit=False,
             reason=assert_sufficient_only(
                 "inconclusive: argument does not close; surviving neighborhood "
                 f"types: {shown}{extra} (proves nothing)"
             ),
-            survivors=tuple(survivors),
+            survivors=labels,
+            ranked=tuple(ranked),
+            checked=len(types),
+            global_sign=gsign,
+            intended_sign=isign,
         )
     return DischargeResult(
         hit=True,
         reason=assert_sufficient_only(
             f"𝒞 is UNAVOIDABLE in D-critical K_D-free graphs (D={arg.D}); "
-            f"global Σμ has forced sign {sign}, every non-excluded type meets "
+            f"global Σμ has forced sign {gsign}, every non-excluded type meets "
             f"the opposite bound. {CLOSURE_TAG}"
         ),
+        checked=len(types),
+        global_sign=gsign,
+        intended_sign=isign,
     )
 
 

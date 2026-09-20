@@ -279,6 +279,8 @@ _TOOL_VERBS: dict[str, str] = {
     "list_critical": "Testing", "verify_coloring": "Certifying",
     "reducible_configuration": "Reducing",
     "discharging_unavoidable": "Discharging",
+    "discharging_cover": "Disc. cover",
+    "discharging_search": "Disc. search",
     "campaign_status": "Reviewing",
     # formal
     "lean_check": "Checking", "lean_typecheck_statement": "Checking",

@@ -22,6 +22,8 @@ jobs:
         run: uv run python ci/reduction_self_test.py
       - name: discharging self-test (discharging engine)
         run: uv run python ci/discharging_self_test.py
+      - name: discharging search self-test (cover + residual)
+        run: uv run python ci/discharging_search_self_test.py
       - name: status schema
         run: uv run python ci/check_status.py formal
       - name: no sorry in formalized entries

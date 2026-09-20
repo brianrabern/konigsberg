@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Iterable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from .ledger import Claim, Ledger, TrustRoot
 from .lemmas import LemmaNotebook, LockedLemma
@@ -35,21 +35,41 @@ CLOSURE_MARK = "conditional on discharging closure lemma"
 REDISCOVERY_BANNER = (
     "REDISCOVERY: this core is already on the ledger. Do not retest it. "
     "Call campaign_status, then take the NEXT stair "
-    "(new graph6 + degree spec, discharging_unavoidable, or a kernel lemma).\n"
+    "(new graph6 + degree spec, a kernel lemma, literature, or discharging).\n"
 )
 # Consecutive staircase injections with an unchanged progress fingerprint
 # (after the catalogue/bridge stairs) before REFORMULATE fires.
 STAGNATION_THRESHOLD = 2
+# Legal discharging syntax if the model *chooses* that tool — not an assignment.
+DISCHARGE_V1_HINT = (
+    "If using discharging (optional): v1 D=9, μ keys 8 and 9; Σμ is forced if "
+    "they share a strict sign, or μ(9)>0 and μ(8)≥0, or μ(9)<0 and μ(8)≤0. "
+    "rules: from_deg 8 or 9, to_pattern deg8/deg9/low/high, radius 1, amount>0. "
+    "forbidden = ledger C: graph6. Radius-1 degree charge cannot move "
+    "deg9(high=9,low=0) — do not rerun search on that residual."
+)
+# After seeds: the whole instrument is in play. Discharging v1 is one tool.
+OPEN_INSTRUMENT = (
+    "Stand on Rabern's shoulders and try something new this circuit. "
+    "literature_search / lean_search his papers and the corpus (Cranston–Rabern, "
+    "Kierstead–Rabern, the dissertation, claw-free / hitting-cliques lines); "
+    "extend a pinned result — do not rediscover it. Invent a NEW "
+    "reducible_configuration (new graph6 + degree spec; not a listed core; "
+    "an edge/K2 is not 1-choosable — do not mint it). Aim cores at the surviving "
+    "neighborhood if one is listed (a 9-regular closed nbhd wants order ~10 "
+    "dominating, not another μ). fixer_breaker / alon_tarsi / choosability_refute "
+    "on new candidates. lean_prove a lemma that is not already locked "
+    "(not equivalent_K3_join_E6, not K3JoinE6_*, not a dummy ..._durable closure). "
+    "Discharging is optional and v1 cannot close deg9(high=9,low=0) — do not "
+    "rerun discharging_search on that residual. Settlement is still durable "
+    "borodinKostochka. Do not graph6_decode listed cores, do not SAT H??F~~~, "
+    "do not rebuild the join."
+)
 REFORMULATE_BANNER = (
-    "REFORMULATE: the ledger has not moved on this stair. Rabern's meta-move "
-    "is to trade the standing target for an a-priori-weaker equivalent "
-    "statement — prove it in Lean, or close discharging. literature_search "
-    "CranstonRabern_BKEquivalentConjectures; pin equivalent_K3_join_E6 "
-    "(χ=Δ=9 ⇒ contains K₃∗Ē₆ as a subgraph) as a *statement*, not a graph "
-    "to SAT. Do not rebuild H??F~~~ / choosability_refute the gadget — it "
-    "is already on 𝒞. Work μ+rules or a durable kernel lemma (no sorry/admit). "
-    "Do not retest listed cores and do not drop the stair. "
-    "Settlement is still durable borodinKostochka.\n"
+    "REFORMULATE: the ledger has not moved. Switch resource — do not rerun "
+    "discharging_search with a new μ. " + OPEN_INSTRUMENT + " "
+    "Do not lean_prove equivalent_K3_join_E6 (Literature sorry; same hardness as BK). "
+    "Do not rebuild H??F~~~.\n"
 )
 
 
@@ -57,9 +77,12 @@ REFORMULATE_BANNER = (
 class CampaignBind:
     """Live session pointers so ``campaign_status`` sees the current ledger.
 
-    ``last_discharge_survivors`` is the best MISS from ``discharging_unavoidable``
-    (not a Claim — a miss proves nothing). The snapshot shows it so the next
-    increment can forbid that neighborhood.
+    ``last_discharge_survivors`` is a neighborhood MISS from
+    ``discharging_unavoidable`` / ``discharging_search`` (not a Claim — a
+    miss proves nothing).
+    ``last_discharge_note`` is the last engine reason even when survivors
+    are empty (sign-unforced μ, coupling, illegal rules).
+    ``last_search_banner`` is the latest ``DISCHARGING_SEARCH`` progress line.
 
     ``progress_fingerprint`` / ``stagnation_streak`` detect a frozen stair
     across staircase injections (not every continue).
@@ -68,6 +91,9 @@ class CampaignBind:
     ledger: Ledger | None = None
     notebook: LemmaNotebook | None = None
     last_discharge_survivors: tuple[str, ...] = ()
+    last_discharge_note: str = ""
+    last_search_banner: str = ""
+    graph6_decode_counts: dict[str, int] = field(default_factory=dict)
     progress_fingerprint: tuple | None = None
     stagnation_streak: int = 0
 
@@ -97,8 +123,11 @@ def is_bridge_name(name: str) -> bool:
 
 
 def is_closure_name(name: str) -> bool:
+    """Literature closure theorem, not session aliases (..._durable / ..._proved)."""
     key = _norm(name)
-    return "reducibleandunavoidable" in key
+    if "reducibleandunavoidableimpnocounterexample" not in key:
+        return False
+    return not (key.endswith("durable") or key.endswith("proved"))
 
 
 def is_at_nine_name(name: str) -> bool:
@@ -181,11 +210,17 @@ def has_unavoidable(claims: Iterable[Claim]) -> bool:
     return discharging_closed(claims) is not None
 
 
+def _clip_note(note: str, n: int = 160) -> str:
+    compact = " ".join(note.split())
+    return compact if len(compact) <= n else compact[: n - 3] + "..."
+
+
 def next_step(
     claims: Iterable[Claim],
     lemmas: Iterable[LockedLemma],
     *,
     survivors: tuple[str, ...] = (),
+    discharge_note: str = "",
 ) -> str:
     claim_list = list(claims)
     lemma_list = list(lemmas)
@@ -213,18 +248,25 @@ def next_step(
             extra = f" (+{len(survivors) - 4} more)" if len(survivors) > 4 else ""
             return (
                 "last discharging attempt did not close; surviving neighborhood: "
-                f"{shown}{extra}. Forbid that neighborhood via "
-                "reducible_configuration (targeted core) or repair μ/rules, "
-                "then re-run discharging_unavoidable against ledger 𝒞 (D=9). "
-                "A miss proves nothing."
+                f"{shown}{extra}. A miss proves nothing. Do not rerun "
+                f"discharging_search on the same residual. {OPEN_INSTRUMENT}"
             )
-        return (
-            "propose μ+rules and run discharging_unavoidable against "
-            "ledger 𝒞 (D=9). The tool verifies; it does not invent. "
-            "UNAVOIDABLE is sufficient-only; a MISS returns a surviving "
-            "neighborhood and proves nothing. On a MISS, forbid that "
-            "neighborhood or repair the rules."
-        )
+        if discharge_note:
+            clip = _clip_note(discharge_note)
+            if "ledger coupling" in discharge_note:
+                return (
+                    f"last discharging used cores not on 𝒞: {clip}. "
+                    f"{OPEN_INSTRUMENT}"
+                )
+            if "non-conserving" in discharge_note or "μ must specify" in discharge_note:
+                return (
+                    f"last discharging was illegal: {clip}. "
+                    f"{DISCHARGE_V1_HINT} {OPEN_INSTRUMENT}"
+                )
+            return (
+                f"last discharging did not close: {clip}. {OPEN_INSTRUMENT}"
+            )
+        return OPEN_INSTRUMENT
     if not has_durable_closure(claim_list, lemma_list):
         return (
             "durable lean_prove of "
@@ -250,6 +292,8 @@ def format_campaign_snapshot(
     lemmas: Iterable[LockedLemma],
     *,
     survivors: tuple[str, ...] = (),
+    discharge_note: str = "",
+    search_banner: str = "",
 ) -> str:
     claim_list = list(claims)
     lemma_list = list(lemmas)
@@ -271,14 +315,24 @@ def format_campaign_snapshot(
     else:
         seed_line = ""
     closed = discharging_closed(claim_list)
+    nxt = next_step(
+        claim_list, lemma_list, survivors=survivors, discharge_note=discharge_note
+    )
     if closed is not None:
         dis_line = f"  discharging: closed D=9 over {','.join(closed)}\n"
     elif survivors:
         shown_s = "; ".join(survivors[:4])
         more = f" (+{len(survivors) - 4} more)" if len(survivors) > 4 else ""
         dis_line = f"  discharging: not closed; last miss: {shown_s}{more}\n"
+    elif discharge_note:
+        dis_line = (
+            "  discharging: not closed; last: "
+            f"{_clip_note(discharge_note)}\n"
+        )
     else:
         dis_line = "  discharging: not closed (no attempt)\n"
+    if search_banner and closed is None:
+        dis_line += f"  search: {search_banner}\n"
     return (
         f"{STAIRCASE_MARK}\n"
         f"  locked lemmas: {len(lemma_list)} ({len(durable)} durable)"
@@ -287,7 +341,7 @@ def format_campaign_snapshot(
         f"{bridge_line}"
         f"{seed_line}"
         f"{dis_line}"
-        f"  NEXT: {next_step(claim_list, lemma_list, survivors=survivors)}\n"
+        f"  NEXT: {nxt}\n"
         "Do not retest listed cores. One new increment this circuit. "
         "Read lemma_list / lemma_read before reproving."
     )
@@ -310,10 +364,20 @@ def progress_fingerprint(
     if closed is not None:
         discharging = "closed:" + ",".join(closed)
     elif survivors:
-        discharging = "miss:" + ";".join(survivors)
+        discharging = _residual_fingerprint(survivors)
     else:
         discharging = "open"
     return (durable, cores, discharging)
+
+
+def _residual_fingerprint(survivors: tuple[str, ...]) -> str:
+    """Collapse μ-oscillation on the same leftover type into one freeze key."""
+    labels = tuple(
+        s.split(" final=")[0].split(" deficit=")[0] for s in survivors if s
+    )
+    if any("deg9(high=9,low=0)" in lab for lab in labels):
+        return "stuck:deg9-regular"
+    return "miss:" + ";".join(labels) if labels else "open"
 
 
 def stagnation_eligible(nxt: str) -> bool:
@@ -339,11 +403,14 @@ def note_stagnation(
     lemmas: Iterable[LockedLemma],
     *,
     survivors: tuple[str, ...] = (),
+    discharge_note: str = "",
 ) -> str:
     """Tick freeze on a staircase injection. Return REFORMULATE or empty."""
     claim_list = list(claims)
     lemma_list = list(lemmas)
-    nxt = next_step(claim_list, lemma_list, survivors=survivors)
+    nxt = next_step(
+        claim_list, lemma_list, survivors=survivors, discharge_note=discharge_note
+    )
     fp = progress_fingerprint(claim_list, lemma_list, survivors=survivors)
     if not stagnation_eligible(nxt):
         bind.progress_fingerprint = fp
@@ -362,7 +429,11 @@ def campaign_status(bind: CampaignBind) -> str:
     claims = bind.ledger.claims() if bind.ledger is not None else ()
     lemmas = bind.notebook.lemmas if bind.notebook is not None else ()
     snap = format_campaign_snapshot(
-        claims, lemmas, survivors=bind.last_discharge_survivors
+        claims,
+        lemmas,
+        survivors=bind.last_discharge_survivors,
+        discharge_note=bind.last_discharge_note,
+        search_banner=getattr(bind, "last_search_banner", "") or "",
     )
     extra = stagnation_text(bind)
     return f"{snap}\n{extra}" if extra else snap

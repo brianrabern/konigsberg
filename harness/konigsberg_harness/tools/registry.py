@@ -20,6 +20,8 @@ from .arg_models import (
     ChoosabilityRefuteArgs,
     DecideColorableArgs,
     DischargingArgs,
+    DischargingCoverArgs,
+    DischargingSearchArgs,
     EmptyArgs,
     FixerBreakerArgs,
     Graph6Args,
@@ -138,6 +140,7 @@ def build_registry(
     from ..lemmas import LemmaNotebook, lemma_list, lemma_read
     from . import arxiv_tools as ax
     from . import empirical_tools as et
+    from . import fundamentals_tools as ft
     from . import lean_tools as lt
     from . import literature_tools as lit
 
@@ -205,16 +208,45 @@ def build_registry(
     )
     bind = CampaignBind()
     reg.campaign_bind = bind
+    dec = reg._tools["graph6_decode"]
+    dec.fn = lambda graph6, _bind=bind: ft.graph6_decode(graph6, bind=_bind)
+    dec.doc = (
+        "Decode graph6 → {n, edges}. At most twice per string per session. "
+        "Listed cores are known — not a staircase increment."
+    )
     reg.register(
         "discharging_unavoidable",
         partial(et.discharging_unavoidable, bind),
         "Verify a proposed discharging argument (μ + rules + forbidden cores) "
-        "at Δ = D. v1 is D=9 only. UNAVOIDABLE is SUFFICIENT for the discharging "
-        "half — a miss returns surviving neighborhood types and proves nothing. "
-        "Forbidden cores must already be minted reducible "
-        "on the ledger. HIT is conditional on "
-        "BK.reducible_and_unavoidable_imp_no_counterexample.",
+        "at Δ = D. v1 is D=9 only. Σμ is forced if μ(8),μ(9) share a strict "
+        "sign, or μ(9)>0 and μ(8)≥0, or μ(9)<0 and μ(8)≤0. Mixed μ ranks "
+        "residuals but cannot HIT. to_pattern: deg8, deg9, low, or high — not "
+        "'8', '9', or '9+'. forbidden must be ledger cores. UNAVOIDABLE is "
+        "SUFFICIENT — a miss returns ranked surviving neighborhood types "
+        "(or a sign-unforced reason) and proves nothing. HIT is conditional on "
+        "BK.reducible_and_unavoidable_imp_no_counterexample. Prefer "
+        "discharging_search to drive the survivor count.",
         args_model=DischargingArgs,
+    )
+    reg.register(
+        "discharging_cover",
+        partial(et.discharging_cover, bind),
+        "Mechanical cover of a v1 local type (center_deg, n_high, n_low) from "
+        "the Rabern catalog via core_forced_in_type — not induced-subgraph of "
+        "a graph6 neighborhood. Prefer offline/AT, then minted, then small n. "
+        "Does not mint a Claim. Unminted hits are reducible_configuration "
+        "hints; only ledger cores may enter 𝒞.",
+        args_model=DischargingCoverArgs,
+    )
+    reg.register(
+        "discharging_search",
+        partial(et.discharging_search, bind),
+        "Guided discharging search at D=9: cover ranked LocalType survivors "
+        "with minted catalog cores, then mutate μ/rules on the residual. "
+        "CLOSED mints UNAVOIDABLE (same coupling as discharging_unavoidable). "
+        "STUCK mints an irreducible-frontier Claim — not a forbidden "
+        "configuration, proves nothing. Progress is survivor count / deficit.",
+        args_model=DischargingSearchArgs,
     )
     reg.register(
         "campaign_status",

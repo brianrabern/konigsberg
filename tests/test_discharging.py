@@ -70,6 +70,35 @@ def test_local_types_d9_are_degree_signatures():
     assert {t.center_deg for t in types} == {8, 9}
 
 
+def test_global_sign_zero_plus_high_is_forced():
+    from konigsberg_empirical.discharging import global_sign, intended_sign
+
+    assert global_sign({8: 0, 9: 1}, 9) == 1
+    assert global_sign({8: 0, 9: -1}, 9) == -1
+    assert global_sign({8: -1, 9: 1}, 9) is None
+    assert intended_sign({8: -1, 9: 1}, 9) == 1
+
+
+def test_mixed_mu_ranks_residuals_but_cannot_hit():
+    arg = build_argument(9, {8: -1, 9: 1}, [], [])
+    result = verify_unavoidable(arg, reducible_cores=set())
+    assert not result.hit
+    assert result.global_sign is None
+    assert result.ranked
+    assert result.ranked[0].deficit <= result.ranked[-1].deficit
+    assert "cannot HIT" in result.reason
+
+
+def test_engine_miss_ranked_includes_deficit():
+    core = _triangle()
+    arg = build_argument(9, {8: -1, 9: -1}, [], [core])
+    result = verify_unavoidable(arg, reducible_cores={core})
+    assert not result.hit
+    assert result.ranked
+    assert "deficit=" in result.survivors[0]
+    assert result.checked == 19
+
+
 def test_engine_close_on_forced_edge():
     core = _edge()
     arg = build_argument(9, {8: -1, 9: -1}, [], [core])
@@ -133,17 +162,20 @@ def test_tool_hit_and_miss_via_registry():
     assert miss.survivors
     assert "avoidable" not in str(miss).lower()
     assert reg.campaign_bind.last_discharge_survivors == miss.survivors
+    assert "surviving" in reg.campaign_bind.last_discharge_note
     status = reg.dispatch("campaign_status", {})
     assert "last miss:" in status
     assert "C:" in status
 
 
-def test_next_step_asks_for_discharging_after_seeds():
+def test_next_step_opens_full_instrument_after_seeds():
     proof, lemma = _bridge()
     cores = [_forbidden(seed.core) for seed in load_reducible_seeds()]
     nxt = next_step([proof, *cores], [lemma])
-    assert "discharging_unavoidable" in nxt
-    assert "D=9" in nxt
+    assert "reducible_configuration" in nxt
+    assert "literature_search" in nxt
+    assert "lean_prove" in nxt
+    assert "deg9(high=9,low=0)" in nxt
 
 
 def test_settles_bk_at_nine_is_not_general_settlement():
@@ -222,6 +254,12 @@ def test_discharging_args_schema():
         "rules",
         "forbidden",
     }
+    assert spec["discharging_search"]["input_schema"]["properties"].keys() >= {
+        "D",
+        "mu",
+        "rules",
+        "max_iters",
+    }
     DischargingArgs.model_validate(
         {"D": 9, "mu": {8: -1, 9: -1}, "rules": [], "forbidden": ["A_"]}
     )
@@ -238,7 +276,11 @@ def test_untagged_unavoidable_does_not_close_staircase():
     )
     assert not has_unavoidable([proof, *seeds, fake])
     nxt = next_step([proof, *seeds, fake], [lemma])
-    assert "discharging_unavoidable" in nxt
+    assert "Stand on Rabern" in nxt
+    assert (
+        "durable lean_prove of "
+        "BK.reducible_and_unavoidable_imp_no_counterexample" not in nxt
+    )
 
 
 def test_unavoidable_cores_must_be_on_reducible_ledger():
@@ -293,7 +335,8 @@ def test_miss_survivors_redirect_to_targeted_core():
     )
     assert "surviving neighborhood" in nxt
     assert "reducible_configuration" in nxt
-    assert "discharging_unavoidable" in nxt
+    assert "do not rerun" in nxt.lower()
+    assert "literature_search" in nxt
 
 
 def test_sufficient_only_guard_rejects_banned_verdicts():
@@ -311,9 +354,10 @@ def test_mission_bk_carries_discharging_rungs():
     from konigsberg_harness.grounding import MISSION_BK
 
     assert "discharging_unavoidable" in MISSION_BK
+    assert "discharging_search" in MISSION_BK
     assert "borodinKostochka_at_nine" in MISSION_BK
     assert "TWO-DIMENSIONAL" in MISSION_BK
-    assert "v1: D=9 only" in MISSION_BK
+    assert "v1: D=9" in MISSION_BK
     assert "not reducible" not in MISSION_BK
     low = MISSION_BK.lower().replace("unavoidable", "")
     assert "avoidable" not in low

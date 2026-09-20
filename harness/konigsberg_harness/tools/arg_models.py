@@ -104,6 +104,31 @@ class DischargingArgs(BaseModel):
         return v
 
 
+class DischargingCoverArgs(BaseModel):
+    """Cover a v1 local type from the Rabern catalog via core_forced_in_type."""
+
+    center_deg: int
+    n_high: int
+    n_low: int | None = None
+
+
+class DischargingSearchArgs(BaseModel):
+    """Guided search: minted catalog cover, then rule/μ mutations."""
+
+    D: int = 9
+    mu: dict[str, int]
+    rules: list[DischargeRule]
+    forbidden: list[str] | None = None
+    max_iters: int = 12
+
+    @field_validator("mu", mode="before")
+    @classmethod
+    def _stringify_mu_keys(cls, v: object) -> object:
+        if isinstance(v, dict):
+            return {str(k): int(val) for k, val in v.items()}
+        return v
+
+
 class LeanCheckArgs(BaseModel):
     snippet: str
 

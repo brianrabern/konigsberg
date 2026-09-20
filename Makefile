@@ -13,6 +13,7 @@ gates: sync  ## run the trust gates (no Lean build needed)
 	uv run python ci/referee_self_test.py
 	uv run python ci/reduction_self_test.py
 	uv run python ci/discharging_self_test.py
+	uv run python ci/discharging_search_self_test.py
 	uv run python ci/check_status.py formal
 	uv run python ci/check_no_sorry.py formal
 	uv run python ci/check_axioms.py formal
